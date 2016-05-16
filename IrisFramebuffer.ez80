@@ -1,0 +1,85 @@
+#if	IVERSION==$0100
+
+; code start - framebuffer functions
+
+IResetPalette:
+; load palette :
+; color is 3-3-2 format, RGB
+; calculate 1555 format color
+	ld	hl, ILCD_PALETTE
+	ld	b, 0
+_IPaletteLoop:
+	ld	a, b
+	rla
+	rla
+	rla
+	ld	e, a
+	rla
+	rl	d
+	rla
+	rl	d
+	and	%10000000
+	ld	c, a
+	ld	a, e
+	and	%00011000
+	or	c
+	ld	(hl), a
+	inc	hl
+	ld	a, b
+	rra
+	and	%01110000
+	ld	c, a
+	ld	a, d
+	and	%00000011
+	or	c
+	ld	(hl), a
+	inc	hl
+	inc b
+	jr nz,_IPaletteLoop
+	ret
+ISetPalette:
+; set the framebuffer palette
+; input : hl
+	ld	de, ILCD_PALETTE
+	ld	bc, 512
+	ldir
+	ret
+IClear:
+; reset framebuffer with color
+; input : c
+; output : none
+; destroyed : all except ix,iy
+	ld	hl, (IFramebuffer)
+	ld	(hl), c
+	ld	e, l
+	ld	d, h
+	inc	de
+	ld	bc, 76799
+	ldir
+	ret
+IFlush:
+; swap the framebuffer and synchronize with LCD
+	ld	hl, (ILCD_BUFFER) 
+	ld	de, (IFramebuffer)
+	ex	de, hl
+	ld	(IFramebuffer), de
+	ld	de, ILCD_ICR
+	ld	a, (de)
+	or	%00000100
+	ld	(de), a
+	ld	(ILCD_BUFFER), hl
+_IWaitLoop:
+	ld	a, (ILCD_RIS)
+	and	%00000100
+	jr	z, _IWaitLoop
+	ret
+IWait:
+; wait until the LCD finish displaying the frame
+	ld	de, ILCD_ICR
+	ld	a, (de)
+	or	%00000100	
+	ld	(de), a
+	jr	_IWaitLoop
+#else
+	.echo	"IrisFramebuffer.ez80 version doesn't correspond to Iris3D.inc version"
+#endif

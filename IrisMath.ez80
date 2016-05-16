@@ -1,0 +1,169 @@
+IReciprocal:
+	push	hl
+	pop	bc
+	ld	hl, $2
+	sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	cpl
+	ld	d, a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	cpl
+	ld	e, a
+	ex	de, hl
+	;slhl	8
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ex	de, hl
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	cpl
+	ld	e, a
+	ex	de, hl
+	ret
+ISquareRoot:
+    xor a \ ld b,l \ push bc \ ld b,a \ ld d,a \ ld c,a \ ld l,a \ ld e,a
+;Iteration 1
+    add hl,hl \ rl c \ add hl,hl \ rl c
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+;Iteration 2
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl e \ ld a,e
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+;Iteration 3
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl e \ ld a,e
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+;Iteration 4
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl e \ ld a,e
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+;Iteration 5
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl e \ ld a,e
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+;Iteration 6
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl e \ ld a,e
+    sub c \ jr nc,$+6 \ inc e \ inc e \ cpl \ ld c,a
+
+;Iteration 7
+    add hl,hl \ rl c \ add hl,hl \ rl c \ rl b
+    ex de,hl \ add hl,hl \ push hl \ sbc hl,bc \ jr nc,$+8
+    ld a,h \ cpl \ ld b,a
+    ld a,l \ cpl \ ld c,a
+    pop hl
+    jr nc,$+4 \ inc hl \ inc hl
+    ex de,hl
+;Iteration 8
+    add hl,hl \ ld l,c \ ld h,b \ adc hl,hl \ adc hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 9
+    pop af
+    rla \ adc hl,hl \ rla \ adc hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 10
+    rla \ adc hl,hl \ rla \ adc hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 11
+    rla \ adc hl,hl \ rla \ adc hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 12
+    rla \ adc hl,hl \ rla \ adc hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+    rr d \ rr e \ ld a,$B7 \ jr nc,+_ \ xor a,%10000000
+_:	ld (Div_SMC),a
+;Iteration 13 (new)
+    add hl,hl \ add hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 14
+    add hl,hl \ add hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 15
+    add hl,hl \ add hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+;Iteration 16
+    add hl,hl \ add hl,hl
+    ex de,hl \ add hl,hl \ sbc hl,de \ add hl,de \ ex de,hl
+    jr nc,$+6 \ sbc hl,de \ inc de \ inc de
+Div_SMC:	or a,a
+	rl e \ ret
+ISquareA:
+	bit	7, a
+	jr	z, $+4
+	neg
+	ld	l, a
+	ld	h, a
+	mlt	hl
+	ret
+ISPCos:
+	add	a, 64
+ISPSin:
+; 256 degree to circle, FP2.6 numbers
+	ld	hl, ISIN_TABLE
+	ld	l, a
+	ld	a, (hl)
+	ret
+#comment
+IDPCos:
+	inc	h
+IDPSin:
+	bit	0, h
+	jr	z, _INegIndexSkp
+	neg
+	jr	z, _IIndexZero
+_INegIndexSkp:
+	bit	1, h
+	ld	h, 3
+	ld	l, a
+	mlt	hl
+	ld	de, ISIN_TABLE_EXTENDED
+	add	hl, de
+	jr	nz, _INegResult
+	ld	hl, (hl)
+	ret
+_INegResult:
+	ld	de, (hl)
+	sbc	hl, hl
+	sbc	hl, de
+	ret
+_IIndexZero
+	bit	1, h
+	jr	nz, _INegResultCst
+	ld	hl, $004000
+	ret
+_INegResultCst:
+	ld	hl, $FFC000
+	ret
+#endcomment
+
+IDPMul:
+; Do HLxDE/16834
+	ret

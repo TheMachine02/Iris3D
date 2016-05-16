@@ -1,0 +1,62 @@
+IDrawPixel:
+; input : hl :x , [d]e : y, c : color
+; output : none
+; destroyed : hl, de
+	ld	d, 160	; [8]
+	mlt	de		; [12]
+	ex	de, hl	; [4]
+	add	hl, hl	; [4]
+	add	hl, de	; [4]
+	ld	de, (IFramebuffer)	; [32]
+	add	hl, de	; [4]
+	ld	(hl), c	; [6]
+	ret			; [x]
+IDrawTriangle:
+	ld	a, 0
+
+
+#define	IColor __IColor__+1
+
+	ld	bc, 0
+	or	a, a
+__ITriangleInner__:
+	sbc	hl, bc
+__IBlock0__:
+	ld	de, $000000
+	add	ix, de
+	jr	nc, __INoSignChange0__
+	ld	de, $000000
+__IBlockRestoreLoop0__:
+	nop \ nop
+	add	ix, de
+	jr	nc, __IBlockRestoreLoop0__
+__INoSignChange0__:
+
+__IBlock1__:
+	ld	de, $000000
+	add	ix, de
+	jr	nc, __INoSignChange1__
+	ld	de, $000000
+__IBlockRestoreLoop1__:
+	nop
+	add	ix, de	
+	jr	nc, __IBlockRestoreLoop1__
+__INoSignChange1__:
+
+; hl start adress, bc is size
+	push	bc
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	add	hl, de
+	inc	de
+__IColor__:
+	ld	(hl), $00
+	ldir
+	pop	bc
+	ld	de, 320
+	add	hl, de
+	dec	a
+	jr	nz, __ITriangleInner__
+; 265 1pxl/line, +7*nb //3000
+	ret

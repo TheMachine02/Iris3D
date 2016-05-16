@@ -1,0 +1,237 @@
+IMatrixLoadIdentity:
+; input : hl matrix
+	ex	de, hl
+	ld	hl, IIdentityMatrix
+	ld	bc, IMATRIX_SIZE
+	ldir
+	ex	de, hl
+	ld	bc, -IMATRIX_SIZE
+	add	hl, bc
+	ret
+IMatrixLoadRotation:
+; euler angle : h-l, matrix : ix
+	ld	b, h
+	ld	c, l
+	ld	hl, ISIN_TABLE
+	ld	e, 64
+
+	ld	l, c
+	ld	a, (hl)
+	ld	(ix+2), a
+
+	ld	a, c
+	add	a, e
+	ld	l, a
+	ld	a, (hl)
+	ld	(ix+0), a
+	xor	a
+	ld	(ix+1), a
+
+	ld	a, b
+	add	a, l
+	ld	l, a
+	ld	d, (hl)
+	sub	c
+	sub	c
+	ld	l, a
+	ld	a, (hl)
+	sub	d
+	sra	a
+	ld	(ix+3), a
+
+	ld	a, b
+	add	a, e
+	ld	l, a
+	ld	a, (hl)
+	ld	(ix+4), a
+	
+	ld	a, b
+	add	a, c
+	ld	l, a
+	ld	d, (hl)
+	sub	c
+	sub	c
+	ld	l, a
+	ld	a, (hl)
+	sra	a
+	sra	d
+	add	a, d
+	neg
+
+	ld	(ix+5), a
+
+	ld	a, (hl)
+	sub 	d
+	sra	a
+	ld	(ix+6), a
+	ld	a, l
+	add	a, e
+	ld	l, a
+	add	a, c
+	add	a, c
+	ld	d, (hl)
+	ld	l, a
+	ld	a, (hl)
+	sra	d
+	sra	a
+	add	a, d	
+	ld	(ix+8), a
+
+	ld	l, b
+	ld	a, (hl)
+	ld	(ix+7), a
+	ret
+#ifdef	IUSE_FN_MATMULT
+IMatrixMult:
+; (hl) = (ix) * (iy)
+; 116 bytes, ~3800 TStates
+	ex	de, hl
+	ld	bc, 768
+__IMatrixColLoop__:
+	push	bc
+	ld	b, 3
+__IMatrixRowLoop__:
+	push	bc
+	ld	h, (ix+0)
+	ld	l, (iy+0)
+	xor	a, a
+	bit	7, h
+	jr	z, $+3
+	add	a, l
+	bit	7, l
+	jr	z, $+3
+	add	a, h
+	mlt	hl
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+	ld	b, (ix+1)
+	ld	c, (iy+3)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+	ld	b, (ix+2)
+	ld	c, (iy+6)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	ld	(de), a
+	inc	de
+	inc	iy
+	pop	bc
+	djnz	__IMatrixRowLoop__
+	lea	ix, ix+3
+	lea	iy, iy-3
+	pop	bc
+	djnz	__IMatrixColLoop__
+	lea	ix, ix-9
+	ex	de, hl
+	ld	bc, -9
+	add	hl, bc
+	ret
+#endif
+IMatrixTranspose:
+; 192 TStates
+	ld	c, (ix+3)
+	ld	a, (ix+1)
+	ld	(ix+3), a
+	ld	(ix+1), c
+	ld	c, (ix+6)
+	ld	a, (ix+2)
+	ld	(ix+6), a
+	ld	(ix+2), c
+	ld	c, (ix+7)
+	ld	a, (ix+5)
+	ld	(ix+7), a
+	ld	(ix+5), c	
+	ret
+ITransform:
+; input : iy vector, ix matrix
+; [ix+0]*[iy]+[ix+1]*[iy+2]+[ix+2]*[iy+4]+[ix+9]=x
+; [ix+3]*[iy]+[ix+4]*[iy+2]+{ix+5]*[iy+4]+[ix+12]=y
+; [ix+6]*[iy]+[ix+7]*[iy+2]+[ix+8]*[iy+4]+[ix+15]=z
+; From 1556 TStates to 1646 TStates, 351 bytes
+; X coordinate
+	ld	hl, (ix+9)
+	ld	a, (ix+0)
+	ld	bc, (iy+0)
+	fma
+	ld	a, (ix+1)
+	ld	bc, (iy+3)
+	fma
+	ld	a, (ix+2)
+	ld	bc, (iy+6)
+	srf
+	fma
+	crf
+	ld	(IPositionX), hl
+; Y coordinate
+	ld	hl, (ix+12)
+	ld	a, (ix+5)
+	fma
+	ld	a, (ix+4)
+	ld	bc, (iy+3)
+	fma
+	ld	a, (ix+3)
+	ld	bc, (iy+0)
+	srf
+	fma
+	crf
+	ld	(IPositionY), hl
+; Z coordinate
+	ld	hl, (ix+15)
+	ld	a, (ix+6)
+	fma
+	ld	a, (ix+7)
+	ld	bc, (iy+3)
+	fma
+	ld	a, (ix+8)
+	ld	bc, (iy+6)
+	fma
+	ld	(IPositionZ), hl
+	ret
+IVectorProject:
+; project a 3x1 vector (ix)
+
+
+
+
+_IByteShift:
+
+
+_IHLdivDE:
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+	cpl
+	ret
+

@@ -1,0 +1,43 @@
+#include	"IrisColor.ez80"
+#include	"IrisData.ez80"
+#include	"IrisFramebuffer.ez80"
+#include	"IrisMath.ez80"
+#include	"IrisMatrix.ez80"
+#include	"IrisQuaternion.ez80"
+#include	"IrisRaster.ez80"
+#include	"IrisVector.ez80"
+
+; functions
+
+IEngineInit:
+; get indic off
+	call	_RunIndicoff
+; disable interrupt and start LCD interrupt
+	di
+	ld	a, (ILCD_IMSC)
+	or	%00000100
+	ld	(ILCD_IMSC), a
+; setup 8bpp mode
+	ld a,IBPP8
+	ld (ILCD_CTRL),a
+; load vram buffer
+	ld	hl, IVRAM0
+	ld	(ILCD_BUFFER), hl
+	ld	hl, IVRAM1
+	ld	(IFramebuffer), hl
+; load sin LUT
+	ld	hl, IUnalignedSinLut
+	ld	de, ISIN_TABLE
+	ld	bc, ISIN_TABLE_SIZE
+	ldir
+	jp	IResetPalette
+IEngineQuit:
+	ld iy,__OS__FLAGS
+	ld a,IBPP16
+	ld (ILCD_CTRL),a
+	call _HomeUp
+	call _Clrscrn
+	call _DrawStatusBar
+	call _RunIndicon
+	ei
+	jp _DrawBatteryIndicator

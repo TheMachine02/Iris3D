@@ -1,0 +1,42 @@
+IMixR5G6B5:
+; mix hl and de
+	ld	a, d
+	and	h
+; and %00001000	; 8
+	and	1<<(6+5-8)
+	ld	b, a
+	ld	a, e
+	and	l
+; and	%00100001	; 33
+	and	(1<<5)+1
+	ld	c, a
+; res 4,d
+	res	(6+5)&7, d
+	ld	a, e
+; and %11011111 ; 223
+	and	~((1<<5)+1)
+	ld	e, a
+; res 4,h
+	res	(6+5)&7, h
+	res	5, l
+	add	hl, de
+	rr	h
+	rr	l
+	add	hl, bc
+	ret
+IMixR3G3B2:
+; 60 TStates [without call]//15
+; mix h with l
+	ld	a, h
+	and	l
+	and	%00100101
+	ld	c, a
+	ld	a, l
+	and	%11011011
+	ld	l, a
+	ld	a, h
+	and	%11011011
+	add	a, l
+	rra
+	add	a, c
+	ret

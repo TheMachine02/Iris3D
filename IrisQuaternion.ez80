@@ -1,0 +1,163 @@
+#if	IVERSION==$0100
+
+; code start - Quaternions utility functions
+
+#ifdef	IUSE_FN_QUATLOADIDENTITY
+IQuaternionLoadIdentity:
+	ex	de, hl
+	ld	hl, IIdentityQuaternion
+	ld	bc, IQUATERNION_SIZE
+	ldir
+	ex	de, hl
+	ld	bc, -IQUATERNION_SIZE
+	add	hl, bc
+	ret
+#endif
+#ifdef	IUSE_FN_QUATLOADROTATION
+IQuaternionLoadRotation:
+	ret
+#endif
+#ifdef	IUSE_FN_QUATMULT
+IQuaternionMult:
+	ret
+#endif
+#ifdef	IUSE_FN_QUATMAGNITUDE
+IQuaternionMagnitude:
+	ret
+#endif
+#ifdef	IUSE_FN_QUATCONJUGATE
+IQuaternionConjugate:
+	ld	de, (ix+3)
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+	ld	(ix+3), hl
+	ld	de, (ix+6)
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+	ld	(ix+6), hl
+	ld	de, (ix+9)
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+	ld	(ix+9), hl
+	ret
+#endif
+#ifdef	IUSE_FN_QUATNORMALIZE
+IQuaternionNormalize:
+	ret
+#endif
+#ifdef	IUSE_FN_QUATGETMATRIX
+IQuaternionGetMatrix:
+; hl quaternion, ix matrix
+	push	hl
+; Product line 1 :
+;	quat0*quat1, (IQuatProd0), off=0
+;	quat0*quat2, (IQuatProd1), off=3
+;	quat0*quat3, (IQuatProd2), off=6
+; Product line 2 :
+;	quat1*quat2, (IQuatProd3), off=9
+;	quat1*quat3, (IQuatProd4), off=12
+; Product line 3:
+;	quat2*quat3, (IQuatProd5), off=15
+	
+
+; Now perform substraction/addition to get matrix coefficients
+; IQuatProd2 with IQuatProd3
+	ld	de, (iy+6)
+	ld	hl, (iy+9)
+	or	a, a
+	sbc	hl, de
+	ld	(ix+3), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+1), h
+; IQuatProd1 with IQuatProd4
+	ld	de, (iy+3)
+	ld	hl, (iy+12)
+	or	a, a
+	sbc	hl, de
+	ld	(ix+2), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+6), h
+; IQuatProd0 with IQuatProd5
+	ld	de, (iy+0)
+	ld	hl, (iy+15)
+	or	a, a
+	sbc	hl, de
+	ld	(ix+7), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+5), h
+; Now calculate other coefficients
+_IOtherCoefficients:
+	pop	hl
+	inc	hl \ inc hl \ inc hl
+	ld	b, $03
+_IPostCLoop:
+	push	bc
+	ld	bc, (hl)
+	inc hl \ inc hl \ inc hl
+; now do 2*(signed b*c/256)+(2* signed b)²
+	ex	de, hl
+	ld	a, b
+	bit	7, a
+	jr	z, _IBPositive
+	neg
+_IBPositive:
+	ld	b, a
+	mlt	bc
+	rl	l
+	ld	l, h
+	rl	l
+	ld	h, 0
+; now get (2b)²
+	add	a, a
+; set carry to 0
+	ld	l, a
+	ld	h, a
+	mlt	hl
+_IPostNegation:
+	jr	nz, _INoPostAdd
+	add	hl, bc
+	add	hl, bc
+_INoPostAdd:
+; next instruction *may* be removed
+	or	a, a
+	sbc	hl, bc
+	ex	de, hl
+	pop	bc
+	push	de
+	djnz	_IPostCLoop
+	pop	bc
+	pop	de
+	ld	hl, $004000
+	or	a, a
+	sbc	hl, de
+	or	a, a
+	sbc	hl, bc
+	ld	(ix+0), h
+	pop	hl
+	push	de
+	ex	de, hl
+	ld	hl, $004000
+	or	a, a
+	sbc	hl, de
+	or	a, a
+	sbc	hl, bc
+	ld	(ix+4), h
+	pop	bc
+	ld	hl, $004000
+	or	a, a
+	sbc	hl, de
+	or	a, a
+	sbc	hl, bc
+	ld	(ix+8), h
+; got matrix right !
+	ret
+#endif
+#else
+	.echo	"IrisQuaternion.ez80 version doesn't correspond to Iris3D.inc version"
+#endif

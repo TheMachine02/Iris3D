@@ -1,0 +1,280 @@
+#if	IVERSION==$0100
+
+; code start - vector utility fonctions
+
+#ifdef	IUSE_FN_SPVECCROSS
+ISPVecCross:
+; (hl) = (ix) cross (iy)
+; 774 TStates, 177 Bytes
+; v1.y*v2.z-v1.z*v2.y
+; v1.z*v2.x-v1.x*v2.z
+; v1.x*v2.y-v1.y*v2.x
+	ex	de, hl
+; v1.y
+	ld	b, (ix+1)
+; v2.z
+	ld	c, (iy+2)
+	xor	a, a
+	sbc	hl, hl
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+; v1.z
+	ld	b, (ix+2)
+; v2.y
+	ld	c, (iy+1)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	or	a, a
+	sbc	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	add	hl, bc
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	ld	(de), a
+	inc	de
+; v1.z
+	ld	h, (ix+2)
+; v2.x
+	ld	l, (iy+0)
+	xor	a, a
+	bit	7, h
+	jr	z, $+3
+	add	a, l
+	bit	7, l
+	jr	z, $+3
+	add	a, h
+	mlt	hl
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+; v1.x
+	ld	b, (ix+0)
+; v2.z
+	ld	c, (iy+2)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	or	a, a
+	sbc	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	add	hl, bc
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	ld	(de), a
+	inc	de
+; v1.x
+	ld	h, (ix+0)
+; v2.y
+	ld	l, (iy+1)
+	xor	a, a
+	bit	7, h
+	jr	z, $+3
+	add	a, l
+	bit	7, l
+	jr	z, $+3
+	add	a, h
+	mlt	hl
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+; v1.y
+	ld	b, (ix+1)
+; v2.x
+	ld	c, (iy+0)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	or	a, a
+	sbc	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	add	hl, bc
+	add	hl, hl
+	add	hl, hl
+	ex	de, hl
+	ld	(hl), d
+	dec	hl
+	dec	hl
+	ret
+#endif
+#ifdef	IUSE_FN_SPVECDOT
+ISPVecDot:
+; hl = (ix) dot (iy)
+; From 344 to 350 TStates, 76 Bytes
+	ld	b, (ix+0)
+	ld	c, (iy+0)
+	xor	a, a
+	sbc	hl, hl
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a, a
+	ld	c, a
+	sbc	hl, bc
+	ld	b, (ix+1)
+	ld	c, (iy+1)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a
+	ld	c, a
+	sbc	hl, bc
+	ld	b, (ix+2)
+	ld	c, (iy+2)
+	xor	a, a
+	bit	7, b
+	jr	z, $+3
+	add	a, c
+	bit	7, c
+	jr	z, $+3
+	add	a, b
+	mlt	bc
+	add	hl, bc
+	ld	b, a
+	xor	a
+	ld	c, a
+	sbc	hl, bc
+	ret
+#endif
+#ifdef	IUSE_FN_SPVECLENGTH
+ISPVecLength:
+; A lot of TStates
+	push	hl
+	ex	de, hl
+	ld	a, (de)
+	bit	7, a
+	jr	z, $+4
+	neg
+	ld	l, a
+	ld	h, a
+	mlt	hl
+	inc	de
+	ld	a, (de)
+	bit	7, a
+	jr	z, $+4
+	neg
+	ld	c, a
+	ld	b, a
+	mlt	bc
+	add	hl, bc
+	inc	de
+	ld	a, (de)
+	bit	7, a
+	jr	z, $+4
+	neg
+	ld	c, a
+	ld	b, a
+	mlt	bc
+	add	hl, bc
+	call	ISquareRoot
+	ex	de, hl
+	pop	de
+	ret
+#endif
+#ifdef	IUSE_FN_SPVECAPPROXLENGTH
+ISPVecApproxLength:
+; hl = dx, dy = de
+; abs(de), abs(hl)
+	or	a, a
+	sbc	hl, de
+	add	hl, de
+	jr	nc, _IFDSwap
+	ex	de, hl
+_IFDSwap:
+; hl = max, de = min
+; do (hl*123+de*51)/128
+	xor	a, a
+	ld	b, l
+	ld	l, 123
+	ld	c, l
+	mlt	hl
+; (high byte)
+	mlt	bc
+	add	a, c
+	ld	c, b
+	ld	b, 0
+	adc	hl, bc
+; result is hla
+	ld	b, e
+	ld	e, 123
+	ld	c, e
+	mlt	de
+	mlt	bc
+	add	a, c
+	ld	c, b
+	ld	b, 0
+	adc	hl, bc
+	add	hl, de
+; [24bit] divide 128
+	add	a, a
+	adc	hl, hl
+	ret
+#endif
+#ifdef	IUSE_FN_SPVECNORMALIZE
+ISPVecNormalize:
+	ret
+#endif
+#ifdef	IUSE_FN_SPVECCOPY
+ISPVecCopy:
+	ret
+#endif
+#ifdef	IUSE_FN_DPVECDOT
+IDPVecDot:
+	ret
+#endif
+#ifdef	IUSE_FN_DPVECCROSS
+IDPVecCross:
+	ret
+#endif
+
+#else
+	.echo	"IrisVector.ez80 version doesn't correspond to Iris3D.inc version"
+#endif
