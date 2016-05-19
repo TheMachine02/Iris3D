@@ -2,8 +2,8 @@
 
 ; code start - vector utility fonctions
 
-#ifdef	IUSE_FN_SPVECCROSS
-ISPVecCross:
+#ifdef	IUSE_FN_VECCROSS
+IVectorCross:
 ; (hl) = (ix) cross (iy)
 ; 774 TStates, 177 Bytes
 ; v1.y*v2.z-v1.z*v2.y
@@ -132,8 +132,8 @@ ISPVecCross:
 	dec	hl
 	ret
 #endif
-#ifdef	IUSE_FN_SPVECDOT
-ISPVecDot:
+#ifdef	IUSE_FN_VECDOT
+IVectorDot:
 ; hl = (ix) dot (iy)
 ; From 344 to 350 TStates, 76 Bytes
 	ld	b, (ix+0)
@@ -184,8 +184,8 @@ ISPVecDot:
 	sbc	hl, bc
 	ret
 #endif
-#ifdef	IUSE_FN_SPVECLENGTH
-ISPVecLength:
+#ifdef	IUSE_FN_VECLENGTH
+IVectorLength:
 ; A lot of TStates
 	push	hl
 	ex	de, hl
@@ -219,8 +219,8 @@ ISPVecLength:
 	pop	de
 	ret
 #endif
-#ifdef	IUSE_FN_SPVECAPPROXLENGTH
-ISPVecApproxLength:
+#ifdef	IUSE_FN_VECAPPROXLENGTH
+IVectorApproxLength:
 ; hl = dx, dy = de
 ; abs(de), abs(hl)
 	or	a, a
@@ -258,20 +258,15 @@ _IFDSwap:
 	adc	hl, hl
 	ret
 #endif
-#ifdef	IUSE_FN_SPVECNORMALIZE
-ISPVecNormalize:
+#ifdef	IUSE_FN_VECNORMALIZE
+IVectorNormalize:
 	ret
 #endif
-#ifdef	IUSE_FN_SPVECCOPY
-ISPVecCopy:
-	ret
-#endif
-#ifdef	IUSE_FN_DPVECDOT
-IDPVecDot:
-	ret
-#endif
-#ifdef	IUSE_FN_DPVECCROSS
-IDPVecCross:
+#ifdef	IUSE_FN_VECCOPY
+IVectorCopy:
+; hl : vector to copy, de : destination adress
+	ld	bc, 3
+	ldir
 	ret
 #endif
 

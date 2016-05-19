@@ -169,12 +169,12 @@ IMatrixTranspose:
 	ld	(ix+7), a
 	ld	(ix+5), c	
 	ret
-ITransform:
+IVectorTransform:
 ; input : iy vector, ix matrix
 ; [ix+0]*[iy]+[ix+1]*[iy+2]+[ix+2]*[iy+4]+[ix+9]=x
 ; [ix+3]*[iy]+[ix+4]*[iy+2]+{ix+5]*[iy+4]+[ix+12]=y
 ; [ix+6]*[iy]+[ix+7]*[iy+2]+[ix+8]*[iy+4]+[ix+15]=z
-; From 1556 TStates to 1642 TStates, 351 bytes
+; From 1556 TStates to 1646 TStates, 351 bytes
 ; X coordinate
 	ld	hl, (ix+9)
 	ld	a, (ix+0)
@@ -300,3 +300,4 @@ __neg2__:
 	add	a, l
 	ld	l, a
 	jr	_IPEntryPoint1
+

@@ -45,6 +45,8 @@
 #define	lrp			__ilrp_src_(
 #define	pow			__ipow_src_(
 #define	rcp			__ircp_src_(
+#define	xpd			call	IVectorCross
+#define	dp3			call	IVectorDot
 #define	.vertex		__ivertex_src_(
 #define	.normal		__inormal_src_(
 
@@ -127,14 +129,12 @@
 ; functions include
 
 ; vectors
-#define	IUSE_FN_SPVECCROSS
-#define	IUSE_FN_SPVECDOT
-#define	IUSE_FN_DPVECCROSS
-#define	IUSE_FN_DPVECDOT
-#define	IUSE_FN_SPVECNORMALIZE
-#define	IUSE_FN_SPVECLENGTH
-#define	IUSE_FN_SPVECAPPROXLENGTH
-#define	IUSE_FN_SPVECCOPY
+#define	IUSE_FN_VECCROSS
+#define	IUSE_FN_VECDOT
+#define	IUSE_FN_VECNORMALIZE
+#define	IUSE_FN_VECLENGTH
+#define	IUSE_FN_VECAPPROXLENGTH
+#define	IUSE_FN_VECCOPY
 ; quaternions
 #define	IUSE_FN_QUATLOADIDENTITY
 #define	IUSE_FN_QUATLOADROTATION
@@ -148,7 +148,8 @@
 #define	IUSE_FN_MATLOADROTATION
 #define	IUSE_FN_MATTRANSPOSE
 #define	IUSE_FN_MATMULT
-#define	IUSE_FN_TRANSFORM
+#define	IUSE_FN_VECTRANSFORM
+#define	IUSE_FN_VECPROJECT
 ; colors
 #define	IUSE_FN_MIXR5G6B5
 #define	IUSE_FN_MIXR3G3B2
