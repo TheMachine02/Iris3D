@@ -215,23 +215,88 @@ ITransform:
 	ld	(IPositionZ), hl
 	ret
 IVectorProject:
-; project a 3x1 vector (ix)
-
-
-
-
-_IByteShift:
-
-
-_IHLdivDE:
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
-	add hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+; [662,703,737,778] TStates
+; project a 3x1 vector (ix)(3 bytes per elements)
+; HL = X*256/Z+(ISCREEN_W/2)
+; DE = (ISCREEN_H/2)-Y*256/Z
+	ld	bc, (ix+6)
+	ld	hl, (ix+3)
+	ld	a, (ix+2)
+	rla
+	jr	c, __neg__
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
 	cpl
+	or	a, a
+	sbc	hl, hl
+	ld	l, a
+_IPEntryPoint0:
+	ex	de, hl
+	ld	hl, ISCREEN_W/2
+	or	a, a
+	sbc	hl, de
+	ex	de, hl
+	ld	hl, (ix+0)
+	ld	a, (ix+2)
+	rla
+	jr	c, __neg2__
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	cpl
+	or	a, a
+	sbc	hl, hl
+	ld	l, a
+_IPEntryPoint1:
+	ld	bc, ISCREEN_W/2
+	add	hl, bc
 	ret
-
+__neg__:
+	ex	de, hl
+	ccf
+	sbc	hl, hl
+	sbc	hl, de
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	scf
+	sbc	hl, hl
+	add	a, l
+	ld	l, a
+	jr	_IPEntryPoint0
+__neg2__:
+	push	de
+	ex	de, hl
+	ccf
+	sbc	hl, hl
+	sbc	hl, de
+	pop	de
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	scf
+	sbc	hl, hl
+	add	a, l
+	ld	l, a
+	jr	_IPEntryPoint1
