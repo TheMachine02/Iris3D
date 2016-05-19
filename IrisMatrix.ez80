@@ -215,7 +215,7 @@ ITransform:
 	ld	(IPositionZ), hl
 	ret
 IVectorProject:
-; [662,703,737,778] TStates
+; [675,690,737,778] TStates
 ; project a 3x1 vector (ix)(3 bytes per elements)
 ; HL = X*256/Z+(ISCREEN_W/2)
 ; DE = (ISCREEN_H/2)-Y*256/Z
@@ -235,6 +235,24 @@ IVectorProject:
 	cpl
 	or	a, a
 	sbc	hl, hl
+	ld	l, a
+	jr	_IPEntryPoint0
+__neg__:
+	ex	de, hl
+	ccf
+	sbc	hl, hl
+	sbc	hl, de
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	scf
+	sbc	hl, hl
+	add	a, l
 	ld	l, a
 _IPEntryPoint0:
 	ex	de, hl
@@ -262,24 +280,6 @@ _IPEntryPoint1:
 	ld	bc, ISCREEN_W/2
 	add	hl, bc
 	ret
-__neg__:
-	ex	de, hl
-	ccf
-	sbc	hl, hl
-	sbc	hl, de
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ adc a,a
-	scf
-	sbc	hl, hl
-	add	a, l
-	ld	l, a
-	jr	_IPEntryPoint0
 __neg2__:
 	push	de
 	ex	de, hl
