@@ -221,7 +221,7 @@ IVectorProject:
 ; DE = (ISCREEN_H/2)-Y*256/Z
 	ld	bc, (ix+6)
 	ld	hl, (ix+3)
-	ld	a, (ix+2)
+	ld	a, (ix+5)
 	rla
 	jr	c, __neg__
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
