@@ -233,9 +233,6 @@ IVectorProject:
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ adc a,a
 	cpl
-	or	a, a
-	sbc	hl, hl
-	ld	l, a
 	jr	_IPEntryPoint0
 __neg__:
 	ex	de, hl
@@ -250,16 +247,11 @@ __neg__:
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ adc a,a
-	scf
-	sbc	hl, hl
-	add	a, l
-	ld	l, a
+	inc	a
 _IPEntryPoint0:
-	ex	de, hl
-	ld	hl, ISCREEN_W/2
-	or	a, a
-	sbc	hl, de
-	ex	de, hl
+	add	a, ISCREEN_H/2
+	ld	e, a
+
 	ld	hl, (ix+0)
 	ld	a, (ix+2)
 	rla
