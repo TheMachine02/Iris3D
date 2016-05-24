@@ -51,8 +51,10 @@ IClear:
 ; destroyed : all except ix,iy
 	ld	hl, (IFramebuffer)
 	ld	(hl), c
-	ld	e, l
-	ld	d, h
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	add	hl, de
 	inc	de
 	ld	bc, 76799
 	ldir
@@ -80,6 +82,14 @@ IWait:
 	or	%00000100	
 	ld	(de), a
 	jr	_IWaitLoop
+ISwap:
+; swap buffer without LCD acknowledge
+	ld	hl, (ILCD_BUFFER) 
+	ld	de, (IFramebuffer)
+	ex	de, hl
+	ld	(IFramebuffer), de
+	ld	(ILCD_BUFFER), hl
+	ret
 #else
 	.echo	"IrisFramebuffer.ez80 version doesn't correspond to Iris3D.inc version"
 #endif

@@ -8,7 +8,73 @@ IMatrixLoadIdentity:
 	ld	bc, -IMATRIX_SIZE
 	add	hl, bc
 	ret
-IMatrixLoadRotation:
+IMatrixRotationX:
+	ld	a, l
+	ld	hl, ISIN_TABLE
+	ld	l, a
+	ld	a, (hl)
+	ld	(ix+7), a
+	neg
+	ld	(ix+5), a
+	ld	a, l
+	add	a, 64
+	ld	l, a
+	ld	c, (hl)
+	ld	(ix+4), c
+	ld	(ix+8), c
+	ld	a, 64
+	ld	(ix+0), a
+	xor	a, a
+	ld	(ix+1), a
+	ld	(ix+2), a
+	ld	(ix+3), a
+	ld	(ix+6), a
+	ret
+IMatrixRotationZ:
+	ld	a, l
+	ld	hl, ISIN_TABLE
+	ld	l, a
+	ld	a, (hl)
+	ld	(ix+3), a
+	neg
+	ld	(ix+1), a
+	ld	a, l
+	add	a, 64
+	ld	l, a
+	ld	c, (hl)
+	ld	(ix+0), c
+	ld	(ix+4), c
+	ld	a, 64
+	ld	(ix+8), a
+	xor	a, a
+	ld	(ix+2), a
+	ld	(ix+6), a
+	ld	(ix+7), a
+	ld	(ix+5), a
+	ret
+IMatrixRotationY:
+	ld	a, l
+	ld	hl, ISIN_TABLE
+	ld	l, a
+	ld	a, (hl)
+	ld	(ix+2), a
+	neg
+	ld	(ix+6), a
+	ld	a, l
+	add	a, 64
+	ld	l, a
+	ld	c, (hl)
+	ld	(ix+0), c
+	ld	(ix+8), c
+	ld	a, 64
+	ld	(ix+4), a
+	xor	a, a
+	ld	(ix+1), a
+	ld	(ix+3), a
+	ld	(ix+5), a
+	ld	(ix+7), a
+	ret
+IMatriLoadRotation:
 ; euler angle : h-l, matrix : ix
 	ld	b, h
 	ld	c, l

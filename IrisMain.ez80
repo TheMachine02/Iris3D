@@ -21,20 +21,28 @@ IEngineInit:
 	ld a,IBPP8
 	ld (ILCD_CTRL),a
 ; load vram buffer
-	ld	hl, IVRAM0
+	ld	hl, IVRAMF0
 	ld	(ILCD_BUFFER), hl
-	ld	hl, IVRAM1
+	ld	hl, IVRAMF1
 	ld	(IFramebuffer), hl
 ; load sin LUT
 	ld	hl, IUnalignedSinLut
 	ld	de, ISIN_TABLE
 	ld	bc, ISIN_TABLE_SIZE
 	ldir
+; test - reallocate IVector
+	ld	hl, IVectorTransform
+	ld	bc, 512
+	ld	de, IVRAM
+	ldir
 	jp	IResetPalette
 IEngineQuit:
 	ld iy,__OS__FLAGS
 	ld a,IBPP16
 	ld (ILCD_CTRL),a
+	ld	hl, IVRAMF0
+	ld	(ILCD_BUFFER), hl
+	call	IWait
 	call _HomeUp
 	call _Clrscrn
 	call _DrawStatusBar

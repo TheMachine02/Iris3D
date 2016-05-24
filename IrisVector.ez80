@@ -269,6 +269,10 @@ IVectorCopy:
 	ldir
 	ret
 #endif
+#ifdef	IUSE_FN_VECREFLECT
+IVectorReflect:
+	ret
+#endif
 
 #else
 	.echo	"IrisVector.ez80 version doesn't correspond to Iris3D.inc version"

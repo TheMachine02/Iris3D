@@ -44,7 +44,7 @@
 #define	fma			__ifma_src_(
 #define	lrp			__ilrp_src_(
 #define	pow			__ipow_src_(
-#define	rcp			__ircp_src_(
+#define	rcp			call	IReciprocal
 #define	xpd			call	IVectorCross
 #define	dp3			call	IVectorDot
 #define	.vertex		__ivertex_src_(
@@ -89,8 +89,8 @@
 
 ; target buffers, 76800 bytes each
 
-#define	IVRAM0		$D40000	; first VRAM buffer
-#define	IVRAM1		$D52C00	; second VRAM buffer
+#define	IVRAMF0		$D40000	; first VRAM buffer
+#define	IVRAMF1		$D52C00	; second VRAM buffer
 
 ; Structure/data include
 
@@ -110,12 +110,8 @@
 #define	IPipelineFlags	IPIPE_ADRESS + 15
 ; 16 bytes structure
 
-#define	IVERTEX_CACHE	$E30800
-; 64 entries : 384 bytes
-#define	ICACHE		$E30980
-; 128 bytes free
-#define	IVRAM			$E30A00
-; 512 bytes, texture, routine reallocate
+#define	IVRAM			$E30800
+; 1024 bytes fast RAM (2TStates), texture, routine reallocate
 
 ; limits
 
