@@ -50,112 +50,108 @@ IQuaternionNormalize:
 #endif
 #ifdef	IUSE_FN_QUATGETMATRIX
 IQuaternionGetMatrix:
-; hl quaternion, ix matrix
+; iy quaternion, ix matrix
+; (qw, qx, qy, qz)
+; 1 - 2*qy² - 2*qz² 	2*qx*qy - 2*qz*qw 	2*qx*qz + 2*qy*qw
+; 2*qx*qy + 2*qz*qw 	1 - 2*qx² - 2*qz² 	2*qy*qz - 2*qx*qw
+; 2*qx*qz - 2*qy*qw 	2*qy*qz + 2*qx*qw 	1 - 2*qx² - 2*qy²
+	ld	hl, (iy+IQZ)
+	ld	de, (iy+IQW)
+	call	IQuatMul
+	add	hl, hl
+; 2*qz*qw
 	push	hl
-; Product line 1 :
-;	quat0*quat1, (IQuatProd0), off=0
-;	quat0*quat2, (IQuatProd1), off=3
-;	quat0*quat3, (IQuatProd2), off=6
-; Product line 2 :
-;	quat1*quat2, (IQuatProd3), off=9
-;	quat1*quat3, (IQuatProd4), off=12
-; Product line 3:
-;	quat2*quat3, (IQuatProd5), off=15
-	
-
-; Now perform substraction/addition to get matrix coefficients
-; IQuatProd2 with IQuatProd3
-	ld	de, (iy+6)
-	ld	hl, (iy+9)
-	or	a, a
-	sbc	hl, de
-	ld	(ix+3), h
-	add	hl, de
-	add	hl, de
-	ld	(ix+1), h
-; IQuatProd1 with IQuatProd4
-	ld	de, (iy+3)
-	ld	hl, (iy+12)
-	or	a, a
-	sbc	hl, de
-	ld	(ix+2), h
-	add	hl, de
-	add	hl, de
-	ld	(ix+6), h
-; IQuatProd0 with IQuatProd5
-	ld	de, (iy+0)
-	ld	hl, (iy+15)
-	or	a, a
-	sbc	hl, de
-	ld	(ix+7), h
-	add	hl, de
-	add	hl, de
-	ld	(ix+5), h
-; Now calculate other coefficients
-_IOtherCoefficients:
-	pop	hl
-	inc	hl \ inc hl \ inc hl
-	ld	b, $03
-_IPostCLoop:
-	push	bc
-	ld	bc, (hl)
-	inc hl \ inc hl \ inc hl
-; now do 2*(signed b*c/256)+(2* signed b)²
-	ex	de, hl
-	ld	a, b
-	bit	7, a
-	jr	z, _IBPositive
-	neg
-_IBPositive:
-	ld	b, a
-	mlt	bc
-	rl	l
-	ld	l, h
-	rl	l
-	ld	h, 0
-; now get (2b)²
-	add	a, a
-; set carry to 0
-	ld	l, a
-	ld	h, a
-	mlt	hl
-_IPostNegation:
-	jr	nz, _INoPostAdd
-	add	hl, bc
-	add	hl, bc
-_INoPostAdd:
-; next instruction *may* be removed
-	or	a, a
-	sbc	hl, bc
-	ex	de, hl
-	pop	bc
-	push	de
-	djnz	_IPostCLoop
-	pop	bc
+	ld	hl, (iy+IQX)
+	ld	de, (iy+IQY)
+	call	IQuatMul
+	add	hl, hl
+; 2*qx*qy
 	pop	de
-	ld	hl, $004000
 	or	a, a
 	sbc	hl, de
+	ld	(ix+1), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+3), h
+; next
+	ld	hl, (iy+IQY)
+	ld	de, (iy+IQW)
+	call	IQuatMul
+	add	hl, hl
+; 2*qw*qy
+	push	hl
+	ld	hl, (iy+IQX)
+	ld	de, (iy+IQZ)
+	call	IQuatMul
+	add	hl, hl
+; 2*qx*qz
+	pop	de
 	or	a, a
-	sbc	hl, bc
-	ld	(ix+0), h
-	pop	hl
-	push	de
+	sbc	hl, de
+	ld	(ix+6), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+2), h
+; next
+	ld	hl, (iy+IQX)
+	ld	de, (iy+IQW)
+	call	IQuatMul
+	add	hl, hl
+; 2*qx*qw
+	push	hl
+	ld	hl, (iy+IQY)
+	ld	de, (iy+IQZ)
+	call	IQuatMul
+	add	hl, hl
+; 2*qy*qz
+	pop	de
+	or	a, a
+	sbc	hl, de
+	ld	(ix+5), h
+	add	hl, de
+	add	hl, de
+	ld	(ix+7), h
+; 1-2*qy²-2qz²
+	ld	hl, (iy+IQY)
+	call	IFPSquare
+	add	hl, hl
+	call	IUDiv64
+	push	hl
+	push	hl
+	ld	hl, (iy+IQZ)
+	call	IFPSquare
+	add	hl, hl
+	call	IUDiv64
 	ex	de, hl
-	ld	hl, $004000
-	or	a, a
-	sbc	hl, de
-	or	a, a
-	sbc	hl, bc
-	ld	(ix+4), h
 	pop	bc
 	ld	hl, $004000
 	or	a, a
+	sbc	hl, bc
+	or	a, a
 	sbc	hl, de
+	ld	(ix+0), h
+; 1-2*qz²-2qx²	
+	push	de
+	ld	hl, (iy+IQX)
+	call	IFPSquare
+	add	hl, hl
+	call	IUDiv64
+	ex	de, hl
+	pop	bc
+	ld	hl, $004000
 	or	a, a
 	sbc	hl, bc
+	or	a, a
+	sbc	hl, de
+	ld	(ix+4), h
+; 1-2qx²-2qy²
+	pop	bc
+	ld	hl, $004000
+	or	a, a
+	sbc	hl, bc
+	or	a, a
+	sbc	hl, de
 	ld	(ix+8), h
-; got matrix right !
 	ret
 #endif
 #else
