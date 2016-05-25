@@ -37,6 +37,21 @@ IEngineInit:
 	ldir
 	jp	IResetPalette
 IEngineQuit:
+	ld hl,0F50000h
+	xor a		; Mode 0
+	ld (hl),a
+	inc l		; 0F50001h
+	ld (hl),15	; Wait 15*256 APB cycles before scanning each row
+	inc l		; 0F50002h
+	xor a
+	ld (hl),a
+ 	inc l		; 0F50003h
+	ld (hl),15	; Wait 15 APB cycles before each scan
+	inc l		; 0F50004h
+	ld a,8		; Number of rows to scan
+	ld (hl),a
+	inc l		; 0F50005h
+	ld (hl),a	; Number of columns to scan
 	ld iy,__OS__FLAGS
 	ld a,IBPP16
 	ld (ILCD_CTRL),a

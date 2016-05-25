@@ -22,8 +22,7 @@ MainLoop:
 	ld	hl, (EulerAngle)
 	call	IMatrixRotationY
 
-MainRender:	
-	
+MainRender:		
 	ld	hl, 1171
 	ld	iy, MdlData
 
@@ -31,7 +30,9 @@ RenderLoop:
 	push	hl
 	call	IVectorTransform
 	lea	iy, iy+9
-	call	IDrawBad
+	call	IProject
+	ld	c, iyl
+	call	IDrawPixel
 	pop	hl
 	dec	hl	
 	ld	a, h
@@ -75,21 +76,19 @@ WorldMatrix:
 EulerAngle:
 	.dl	0
 MdlData:
-#include	Model.inc
+#include	"Model.inc"
 
-IDrawBad:	
+IProject:	
 	ld	hl, (IPositionY)
 	ld	bc, (IPositionZ)	
 	ld	a, (IPositionY+2)
-	rla
-	push	af
+	rlca
 	jr	nc, _iskip
 	or	a, a
 	ex	de, hl
 	sbc	hl, hl
 	sbc	hl, de
 _iskip:
-	add hl, hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
@@ -97,31 +96,18 @@ _iskip:
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
 ;	add	hl, hl \ sbc hl, bc
-; c = 0, nc = 1
 	cpl
-	or	a, a
-	sbc	hl, hl
-;	inc	hl
-;	add	a, l
-	ld	l, a
-	pop	af
-	jr	c, _other
-	ex	de, hl
-	ld	hl, 120
-	or	a, a
-	sbc	hl, de
-	ex	de, hl
-	jr	_end
-_other:
-	ld	de, 120
-	add	hl, de
-	ex	de, hl
+	jr	c, _askp
+	neg
+_askp:
+	add	a, 120
+	ld	e, a
 _end:
 	ld	hl, (IPositionX)
 	ld	a, (IPositionX+2)
-	rla
-	push	af
+	rlca
 	jr	nc, _iskip2
 	push	de
 	or	a, a
@@ -137,36 +123,26 @@ _iskip2:
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
 	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-;	add	hl, hl \ sbc hl, bc
+	add hl,hl \ sbc hl,bc \ adc a,a
 	cpl
-	or	a, a
+	jr	c, other2
+;	add	hl, hl \ sbc hl, bc
 	sbc	hl, hl
 ;	inc	hl
 ;	add	a, l
 	ld	l, a
-	pop	af
-	jr	c, other2
 	ld	bc, 160
 	add	hl, bc
-	jr	_end2
+	ret
 other2:
-	push	de
-	ld	de, 160
 	or	a, a
+	sbc	hl, hl
+	ld	l, a
+	ld	c, e
+	ld	de, 160
 	ex	de, hl
 	sbc	hl, de
-	pop	de
-_end2:
-; hl=x, de= y
-	ld	c, iyl
-	ld	d, 160	; [8]
-	mlt	de		; [12]
-	ex	de, hl	; [4]
-	add	hl, hl	; [4]
-	add	hl, de	; [4]
-	ld	de, (IFramebuffer)	; [32]
-	add	hl, de	; [4]
-	ld	(hl), c	; [6]
-	ret			; [x]
+	ld	e, c
+	ret
+
 
