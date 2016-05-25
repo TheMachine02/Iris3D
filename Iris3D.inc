@@ -41,6 +41,13 @@
 #define	IMATRIX_SIZE	(3*3)+(9*1)
 #define	IQUATERNION_SIZE	(3*4)
 
+#define	IQW	0
+#define	IQX	3
+#define	IQY	6
+#define	IQZ	9
+
+#define	__iwritetmp__	$D0330C
+
 #define	fma			__ifma_src_(
 #define	lrp			__ilrp_src_(
 #define	pow			__ipow_src_(

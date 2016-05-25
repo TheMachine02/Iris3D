@@ -164,6 +164,91 @@ _INegResultCst:
 	ret
 #endcomment
 
-IDPMul:
-; Do HLxDE/16834
+IFPMul:
+; HLxDE/256 [16bits]
+; (HxD*256+LxD+ExH+LxE/256)
+	ld	b, h
+	ld	c, l
+	ld	l, d
+	mlt	hl
+	bit	7, b
+	jr	z, $+5
+	or	a, a
+	sbc	hl, de
+	bit	7, d
+	jr	z, $+5
+	or	a, a
+	sbc	hl, bc
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+; now need to do (CxD+BxE+ExC/256)
+	ld	a, c
+	ld	c, e
+	mlt	bc
+	add	hl, bc
+	ld	c, a
+	ld	b, d
+	mlt	bc
+	add	hl, bc
+	ld	c, a
+	ld	b, e
+	mlt	bc
+	ld	c, b
+	ld	b, 0
+	add	hl, bc
+	ret
+IFPSquare:
+; HL²/256
+; Destroy DE,A [16bits]
+; (HxH*256+LxH*2+LxL/256)
+	bit	7, h
+	jr	z, _IFPSAbsSkp
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+_IFPSAbsSkp:
+	ld	d, h
+	ld	e, l
+	ld	l, h
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ld	a, e
+	mlt	de
+	add	hl, de
+	add	hl, de
+	ld	e, a
+	ld	d, a
+	mlt	de
+	ld	e, d
+	ld	d, 0
+	add	hl, de
+	ret
+IQuatMul:
+	call	IFPMul
+IUDiv64:
+	add	hl, hl
+IUDiv128:
+	add	hl, hl
+IUDiv256:
+	ld	(__iwritetmp__), hl
+	ld	a, (__iwritetmp__+2)
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	ld	h, a
+	ld	l, d
 	ret
