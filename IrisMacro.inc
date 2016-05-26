@@ -61,14 +61,7 @@ val
 	ld	a, h
 	sub	a, b
 	ld	h, a
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	slhl
 	mlt	bc
 	add	hl, bc
 	add	hl, de
@@ -90,14 +83,7 @@ val
 	cpl
 	adc	a, h
 	ld	h, a
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	slhl
 	add	hl, de
 ; ok, that was fast !
 #endif
@@ -141,11 +127,16 @@ val
 	djnz	$-1
 #endmacro
 
-;#macro	__islhl_src_(x)
-;repeat x
-;	add	hl, hl
-;endrepeat
-;#endmacro
+#macro	__islhl_src_()
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+#endmacro
 
 #macro	__ircp_src_()
 	call	IReciprocal

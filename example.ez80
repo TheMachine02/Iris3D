@@ -14,13 +14,19 @@
 	call	IMatrixLoadIdentity
 	ld	hl, 32768
 	ld	(ix+15), hl
-	
+
 MainLoop:
-	ld	c, 0	; black
+	ld	c, 0	; white
 	call	IClear
 
-	ld	hl, (EulerAngle)
-	call	IMatrixRotationY
+;	ld	hl, (EulerAngle)
+;	call	IMatrixRotationY
+	ld	a, (EulerAngle)
+	ld	iy, Quaternion
+	ld	ix, UnitVector
+	call	IQuaternionLocalRotation
+	ld	ix, WorldMatrix
+	call	IQuaternionToMatrix
 
 MainRender:		
 	ld	hl, 1171
@@ -70,7 +76,10 @@ _kskip2:
 	jp	IEngineQuit
 
 #include	"IrisMain.ez80"
-
+UnitVector:
+	.dl	0,16384,0
+Quaternion:
+	.dl	0,0,0,0
 WorldMatrix:
 	.dl	0,0,0,0,0,0
 EulerAngle:

@@ -6,6 +6,27 @@ IResetPalette:
 ; load palette :
 ; color is 3-3-2 format, RGB
 ; calculate 1555 format color
+CopyHL1555Palette:
+	ld hl,$E30200				; palette mem
+	ld b,0
+_cp1555loop:
+	ld d,b
+	ld a,b
+	and %11000000
+	srl d
+	rra
+	ld e,a
+	ld a,%00011111
+	and b
+	or e
+	ld (hl),a
+	inc hl
+	ld (hl),d
+	inc hl
+	inc b
+	jr nz,_cp1555loop
+
+#comment
 	ld	hl, ILCD_PALETTE
 	ld	b, 0
 _IPaletteLoop:
@@ -36,6 +57,7 @@ _IPaletteLoop:
 	inc	hl
 	inc b
 	jr nz,_IPaletteLoop
+#endcomment
 	ret
 ISetPalette:
 ; set the framebuffer palette

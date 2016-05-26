@@ -46,11 +46,12 @@
 #define	IQY	6
 #define	IQZ	9
 
-#define	__iwritetmp__	$D0330C
+#define	__iwritetmp__	$D03403
 
-#define	fma			__ifma_src_(
-#define	lrp			__ilrp_src_(
-#define	pow			__ipow_src_(
+#define	fma			__ifma_src_()
+#define	lrp			__ilrp_src_()
+#define	pow			__ipow_src_()
+#define	slhl			__islhl_src_()
 #define	rcp			call	IReciprocal
 #define	xpd			call	IVectorCross
 #define	dp3			call	IVectorDot
@@ -101,14 +102,14 @@
 
 ; Structure/data include
 
-#define	IPositionX		$D03303
-#define	IPositionY		$D03306
-#define	IPositionZ		$D03309
+#define	IPositionX		$D03403
+#define	IPositionY		$D03406
+#define	IPositionZ		$D03409
 
 #define	IBUFFER_ADRESS	$D03200
 #define	ISIN_TABLE		IBUFFER_ADRESS
-#define	ISIN_TABLE_SIZE	256
-#define	IPIPE_ADRESS	IBUFFER_ADRESS + 256
+#define	ISIN_TABLE_SIZE	512
+#define	IPIPE_ADRESS	IBUFFER_ADRESS + 512
 #define	IPipelineState	IPIPE_ADRESS
 #define	IVertexShader	IPIPE_ADRESS
 #define	IGeomShader	IPIPE_ADRESS + 4

@@ -179,14 +179,7 @@ IFPMul:
 	jr	z, $+5
 	or	a, a
 	sbc	hl, bc
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	slhl
 ; now need to do (CxD+BxE+ExC/256)
 	ld	a, c
 	ld	c, e
@@ -218,14 +211,7 @@ _IFPSAbsSkp:
 	ld	e, l
 	ld	l, h
 	mlt	hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	slhl
 	ld	a, e
 	mlt	de
 	add	hl, de
@@ -237,8 +223,8 @@ _IFPSAbsSkp:
 	ld	d, 0
 	add	hl, de
 	ret
-IQuatMul:
-	call	IFPMul
+IUDiv32:
+	add	hl, hl
 IUDiv64:
 	add	hl, hl
 IUDiv128:
