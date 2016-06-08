@@ -1,3 +1,5 @@
+#comment
+
 #define	IBLOOMTHRESOLD	%01001010
 #define	IBLOOMRADIUS	%00000011
 #define	IBLOOMBUFFER
@@ -19,3 +21,5 @@ end
 	ret
 IPostProcessBlur:
 	ret
+
+#endcomment

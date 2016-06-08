@@ -53,19 +53,16 @@ IMatrixRotationZ:
 	ld	(ix+5), a
 	ret
 IMatrixRotationY:
-	ld	a, l
-	ld	hl, ISIN_TABLE
-	ld	l, a
-	ld	a, (hl)
+	push	hl
+	call	IQuatSin
+	ld	a, h
 	ld	(ix+2), a
 	neg
 	ld	(ix+6), a
-	ld	a, l
-	add	a, 64
-	ld	l, a
-	ld	c, (hl)
-	ld	(ix+0), c
-	ld	(ix+8), c
+	pop	hl
+	call	IQuatCos
+	ld	(ix+0), h
+	ld	(ix+8), h
 	ld	a, 64
 	ld	(ix+4), a
 	xor	a, a
@@ -74,78 +71,7 @@ IMatrixRotationY:
 	ld	(ix+5), a
 	ld	(ix+7), a
 	ret
-IMatriLoadRotation:
-; euler angle : h-l, matrix : ix
-	ld	b, h
-	ld	c, l
-	ld	hl, ISIN_TABLE
-	ld	e, 64
-
-	ld	l, c
-	ld	a, (hl)
-	ld	(ix+2), a
-
-	ld	a, c
-	add	a, e
-	ld	l, a
-	ld	a, (hl)
-	ld	(ix+0), a
-	xor	a
-	ld	(ix+1), a
-
-	ld	a, b
-	add	a, l
-	ld	l, a
-	ld	d, (hl)
-	sub	c
-	sub	c
-	ld	l, a
-	ld	a, (hl)
-	sub	d
-	sra	a
-	ld	(ix+3), a
-
-	ld	a, b
-	add	a, e
-	ld	l, a
-	ld	a, (hl)
-	ld	(ix+4), a
-	
-	ld	a, b
-	add	a, c
-	ld	l, a
-	ld	d, (hl)
-	sub	c
-	sub	c
-	ld	l, a
-	ld	a, (hl)
-	sra	a
-	sra	d
-	add	a, d
-	neg
-
-	ld	(ix+5), a
-
-	ld	a, (hl)
-	sub 	d
-	sra	a
-	ld	(ix+6), a
-	ld	a, l
-	add	a, e
-	ld	l, a
-	add	a, c
-	add	a, c
-	ld	d, (hl)
-	ld	l, a
-	ld	a, (hl)
-	sra	d
-	sra	a
-	add	a, d	
-	ld	(ix+8), a
-
-	ld	l, b
-	ld	a, (hl)
-	ld	(ix+7), a
+IMatrixLoadRotation:
 	ret
 #ifdef	IUSE_FN_MATMULT
 IMatrixMult:
@@ -240,17 +166,17 @@ IVectorTransform:
 ; [ix+0]*[iy]+[ix+1]*[iy+2]+[ix+2]*[iy+4]+[ix+9]=x
 ; [ix+3]*[iy]+[ix+4]*[iy+2]+{ix+5]*[iy+4]+[ix+12]=y
 ; [ix+6]*[iy]+[ix+7]*[iy+2]+[ix+8]*[iy+4]+[ix+15]=z
-; From 1556 TStates to 1646 TStates, 351 bytes
+; From 1556 TStates to 1642 TStates, 351 bytes
 ; X coordinate
 	ld	hl, (ix+9)
 	ld	a, (ix+0)
 	ld	bc, (iy+0)
 	fma
 	ld	a, (ix+1)
-	ld	bc, (iy+3)
+	ld	bc, (iy+2)
 	fma
 	ld	a, (ix+2)
-	ld	bc, (iy+6)
+	ld	bc, (iy+4)
 	srf
 	fma
 	crf
@@ -260,7 +186,7 @@ IVectorTransform:
 	ld	a, (ix+5)
 	fma
 	ld	a, (ix+4)
-	ld	bc, (iy+3)
+	ld	bc, (iy+2)
 	fma
 	ld	a, (ix+3)
 	ld	bc, (iy+0)
@@ -273,10 +199,10 @@ IVectorTransform:
 	ld	a, (ix+6)
 	fma
 	ld	a, (ix+7)
-	ld	bc, (iy+3)
+	ld	bc, (iy+2)
 	fma
 	ld	a, (ix+8)
-	ld	bc, (iy+6)
+	ld	bc, (iy+4)
 	fma
 	ld	(IPositionZ), hl
 	ret

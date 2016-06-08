@@ -24,7 +24,7 @@ IMixR5G6B5:
 	rr	l
 	add	hl, bc
 	ret
-IMixR3G3B2:
+IMixRGB:
 ; 60 TStates [without call]//15
 ; mix h with l
 	ld	a, h
@@ -40,3 +40,11 @@ IMixR3G3B2:
 	rra
 	add	a, c
 	ret
+IRBGScale:
+; color = color x factor
+; c is color, a is factor
+
+	ret
+
+
+

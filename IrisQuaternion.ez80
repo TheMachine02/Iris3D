@@ -2,22 +2,6 @@
 
 ; code start - Quaternions utility functions
 
-#macro	__IQuatMulD__()
-	call	IFPMul
-	add	hl, hl
-	rra
-	add	hl, hl
-	add	hl, hl
-	ld	(__iwritetmp__), hl
-	rla
-	ld	a, (__iwritetmp__+2)
-	ld	c, h
-	sbc	hl, hl
-	ld	h, a
-	ld	l, c
-#endmacro
-#define	IQuatMulD		__IQuatMulD__()
-
 #macro	__IQuatMul__()
 	call	IFPMul
 	add	hl, hl
@@ -30,6 +14,7 @@
 	sbc	hl, hl
 	ld	h, a
 	ld	l, c
+	ld	a, (__iwritetmp__)	
 #endmacro
 #define	IQuatMul		__IQuatMul__()
 
@@ -38,7 +23,6 @@
 	add	hl, hl
 	rra
 	add	hl, hl
-	add	hl, hl
 	ld	(__iwritetmp__), hl
 	rla
 	ld	a, (__iwritetmp__+2)
@@ -46,45 +30,8 @@
 	sbc	hl, hl
 	ld	h, a
 	ld	l, c
+	ld	a, (__iwritetmp__)
 #endmacro
-#macro	__iquatsin__()
-	ld	hl, ISIN_TABLE
-	ld	l, a
-	ld	c, (hl)
-	inc	h
-	ld	b, (hl)
-	sbc	hl, hl
-	ld	l, c
-	ld	h, b
-#endmacro
-#define	IQuatSin	__iquatsin__()
-
-#macro	__iquatcos__()
-	ld	hl, ISIN_TABLE
-	add	a, 128
-	push	af
-	ld	l, a
-	ld	c, (hl)
-	inc	h
-	ld	b, (hl)
-	pop	af
-	jr	c, +_
-	sbc	hl, hl
-	ld	l, c
-	ld	h, b
-	jr	++_
-_:
-	or	a, a
-	sbc	hl, hl
-	ex	de, hl
-	ld	d, b
-	ld	e, c
-	or	a, a
-	sbc	hl, hl
-	sbc	hl, de
-_:
-#endmacro
-#define	IQuatCos	__iquatcos__()
 
 #ifdef	IUSE_FN_QUATLOADIDENTITY
 IQuaternionLoadIdentity:
@@ -134,7 +81,7 @@ IQuaternionNormalize:
 #endif
 #ifdef	IUSE_FN_QUATGETMATRIX
 #define	IQuatSquare	__iquatsquare__()
-IQuaternionToMatrix:
+IQuaternionGetMatrix:
 ; iy quaternion, ix matrix
 ; (qw, qx, qy, qz)
 ; 1 - 2*qy² - 2*qz² 	2*qx*qy - 2*qz*qw 	2*qx*qz + 2*qy*qw
@@ -142,12 +89,16 @@ IQuaternionToMatrix:
 ; 2*qx*qz - 2*qy*qw 	2*qy*qz + 2*qx*qw 	1 - 2*qx² - 2*qy²
 	ld	hl, (iy+IQZ)
 	ld	de, (iy+IQW)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qz*qw
 	push	hl
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQY)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qx*qy
 	pop	de
 	or	a, a
@@ -159,12 +110,16 @@ IQuaternionToMatrix:
 ; next
 	ld	hl, (iy+IQY)
 	ld	de, (iy+IQW)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qw*qy
 	push	hl
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQZ)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qx*qz
 	pop	de
 	or	a, a
@@ -176,12 +131,16 @@ IQuaternionToMatrix:
 ; next
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQW)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qx*qw
 	push	hl
 	ld	hl, (iy+IQY)
 	ld	de, (iy+IQZ)
-	IQuatMulD
+	IQuatMul
+	rla
+	adc	hl, hl
 ; 2*qy*qz
 	pop	de
 	or	a, a
@@ -193,10 +152,14 @@ IQuaternionToMatrix:
 ; 1-2*qy²-2qz²
 	ld	hl, (iy+IQY)
 	IQuatSquare
+	rla
+	adc	hl, hl
 	push	hl
 	push	hl
 	ld	hl, (iy+IQZ)
 	IQuatSquare
+	rla
+	adc	hl, hl
 	ex	de, hl
 	pop	bc
 	ld	hl, $004000
@@ -209,6 +172,8 @@ IQuaternionToMatrix:
 	push	de
 	ld	hl, (iy+IQX)
 	IQuatSquare
+	rla
+	adc	hl, hl
 	ex	de, hl
 	pop	bc
 	ld	hl, $004000
@@ -227,7 +192,7 @@ IQuaternionToMatrix:
 	ld	(ix+8), h
 	ret
 #endif
-IQuaternionLocalRotation:
+IQuaternionRotationAxis:
 ; iy adress of quaternion to write
 ; ix unit vector
 ; a angle
@@ -235,8 +200,8 @@ IQuaternionLocalRotation:
 ; qx = axis.x*sin(angle/2)
 ; qy = axis.y*sin(angle/2)
 ; qz = axis.z*sin(angle/2)
-	push	af
-	IQuatSin
+	push	hl
+	call	IQuatSin
 ; hl = sin
 	ex	de, hl
 ; DE is never destroyed by the macro's
@@ -249,9 +214,47 @@ IQuaternionLocalRotation:
 	ld	hl, (ix+6)
 	IQuatMul
 	ld	(iy+IQZ), hl
-	pop	af
-	IQuatCos
+	pop	hl
+	call	IQuatCos
 	ld	(iy+IQW), hl
+	ret
+IQuatCos:
+	inc	h
+IQuatSin:
+	bit	0, h
+	ld	a, l
+	jr	z, _IQuatSinSkp1
+	neg
+	jr	z, _IQuatIndexZero
+_IQuatSinSkp1:
+	bit	1, h
+	jr	nz, _IQuatSinNegate
+	ld	hl, ISIN_TABLE
+	ld	l, a
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	sbc	hl, hl
+	ld	h, b
+	ld	l, c
+	ret
+_IQuatSinNegate:
+	ld	hl, ISIN_TABLE
+	inc.s	bc
+	ld	l, a
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	sbc	hl, hl
+	sbc	hl, bc
+	ret
+_IQuatIndexZero
+	bit	1, h
+	jr	nz, _IQuatNegResultCst
+	ld	hl, $004000
+	ret
+_IQuatNegResultCst:
+	ld	hl, $FFC000
 	ret
 #else
 	.echo	"IrisQuaternion.ez80 version doesn't correspond to Iris3D.inc version"

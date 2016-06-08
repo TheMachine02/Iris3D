@@ -66,6 +66,13 @@ ISetPalette:
 	ld	bc, 512
 	ldir
 	ret
+IScreenReset:
+	ld	hl, $D40000
+	ld	(hl), c
+	ld	de, $D40001
+	ld	bc, 153599
+	ldir
+	ret
 IClear:
 ; reset framebuffer with color
 ; input : c
@@ -96,7 +103,10 @@ _IWaitLoop:
 	ld	a, (ILCD_RIS)
 	and	%00000100
 	jr	z, _IWaitLoop
+;	ld	(IWaitTime), bc
 	ret
+;IWaitTime:
+;.dl	0
 IWait:
 ; wait until the LCD finish displaying the frame
 	ld	de, ILCD_ICR

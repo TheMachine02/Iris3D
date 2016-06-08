@@ -12,6 +12,9 @@
 IEngineInit:
 ; get indic off
 	call	_RunIndicoff
+	;ld	c, %11111111
+	ld	c, %00000000
+	call	IScreenReset
 ; disable interrupt and start LCD interrupt
 	di
 	ld	a, (ILCD_IMSC)
@@ -25,16 +28,11 @@ IEngineInit:
 	ld	(ILCD_BUFFER), hl
 	ld	hl, IVRAMF1
 	ld	(IFramebuffer), hl
-; load sin LUT
-	ld	hl, IUnalignedSinLut
-	ld	de, ISIN_TABLE
-	ld	bc, ISIN_TABLE_SIZE
-	ldir
 ; test - reallocate IVector
-	ld	hl, IVectorTransform
-	ld	bc, 512
-	ld	de, IVRAM
-	ldir
+;	ld	hl, IVectorTransform
+;	ld	bc, 512
+;	ld	de, IVRAM
+;	ldir
 	jp	IResetPalette
 IEngineQuit:
 	ld hl,0F50000h

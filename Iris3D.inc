@@ -4,7 +4,7 @@
 
 
 #define	IVERSION		$0100
-#define	IVERMAJOR		1	
+#define	IVERMAJOR		1
 #define	IVERMINOR		0
 #define	ICODENAME		"Colorfull"
 
@@ -22,7 +22,6 @@
 #include	"ti84pce.inc"
 .nolist
 #endif
-#include	"IrisMacro.inc"
 
 ; Math include
 
@@ -46,10 +45,10 @@
 #define	IQY	6
 #define	IQZ	9
 
-#define	__iwritetmp__	$D03403
+#define	__iwritetmp__	$D03603
 
 #define	fma			__ifma_src_()
-#define	lrp			__ilrp_src_()
+;#define	lrp			__ilrp_src_()
 #define	pow			__ipow_src_()
 #define	slhl			__islhl_src_()
 #define	rcp			call	IReciprocal
@@ -75,12 +74,6 @@
 
 ; raster system include
 
-#define	IRASTER_TILE	8
-#define	IRASTER_CDIST	(ISCREEN_W*32768)/IMHTAN_FP16
-#define	IRASTER_ADIST	256
-#define	IRASTER_DX		1
-#define	IRASTER_DY		1
-
 ; Color LCD include
 
 #define	IBPP8			lcdBpp8	; LCD 8 bpp mode bits
@@ -92,8 +85,11 @@
 #define	ILCD_BUFFER	$E30010	; base adress of LCD
 #define	ILCD_PALETTE	mpLcdPalette	; palette (r3g3b2)
 #define	ILCD_VSYNC		%00000001	; vertical synchronisation
-#define	IR3G3B2		$000332	; standard Iris3D format
-#define	IR5G6B5		$000565	; 16bits color format
+#define	IPALETTE_RBG	%00000001
+#define	IPALETTE_RGB	%00000011
+#define	IPALETTE_IRBG	%00000100
+#define	IPALETTE_IRGB	%00001100
+
 
 ; target buffers, 76800 bytes each
 
@@ -102,13 +98,11 @@
 
 ; Structure/data include
 
-#define	IPositionX		$D03403
-#define	IPositionY		$D03406
-#define	IPositionZ		$D03409
+#define	IPositionX		$D03603
+#define	IPositionY		$D03606
+#define	IPositionZ		$D03609
 
 #define	IBUFFER_ADRESS	$D03200
-#define	ISIN_TABLE		IBUFFER_ADRESS
-#define	ISIN_TABLE_SIZE	512
 #define	IPIPE_ADRESS	IBUFFER_ADRESS + 512
 #define	IPipelineState	IPIPE_ADRESS
 #define	IVertexShader	IPIPE_ADRESS
@@ -157,5 +151,152 @@
 ; colors
 #define	IUSE_FN_MIXR5G6B5
 #define	IUSE_FN_MIXR3G3B2
+
+; vertex model include
+
+#macro	__ivertex_src_(x,y,z)
+	.dw	x,y,z
+#endmacro
+
+; normal model include
+
+#macro	__inormal_src_(x,y,z)
+; include normal information
+	.db	x,y,z
+#endmacro
+
+; value absolute (compile-time)
+
+#macro	IAbs16(val)
+#if	val&$8000
+val=-val
+#endif
+val
+#endmacro
+
+#macro	IAbs24(val)
+#if	val&$800000
+val=-val
+#endif
+val
+#endmacro
+
+#macro	srf()
+	#define	r0	1
+#endmacro
+#macro	crf()
+	#define	r0	eval(1-r0)
+#endmacro
+
+; Fused multiply and add macro
+; fma [bc,a,hl]
+; Do hl = (bc x a) + hl
+; bc:16bits, a:8bits, hl:24bits, accumulated on 24 bits
+; From 122 to 132 TStates on 4 wait-states RAM [122,125,129,132]
+; From 096 to 101 TStates on 3 wait-states RAM [096,97,100,101]
+; 31 Bytes
+#macro	__ifma_src_()
+#if	r0==0
+	ex	de, hl
+	ld	h, b
+	ld	l, a
+	mlt	hl
+	cp	$80
+	jr	c, $+4
+	sbc	hl, bc
+	bit	7, b
+	ld	b, a
+	jr	z, $+5
+	ld	a, h
+	sub	a, b
+	ld	h, a
+	slhl
+	mlt	bc
+	add	hl, bc
+	add	hl, de
+#else
+	ld	d, c	
+	ld	e, a
+	mlt	de
+	add	hl, de
+	ex	de, hl
+	ld	h, b
+	ld	l, a	
+	mlt	hl
+; watch the carry flag !
+	cp	$80
+	jr	c, $+4
+	sbc	hl, bc
+	bit	7, b
+	jr	z, $+5
+	cpl
+	adc	a, h
+	ld	h, a
+	slhl
+	add	hl, de
+; ok, that was fast !
+#endif
+#endmacro
+
+; Linear interpolation macro
+; lrp [b,c,a] [src0,src1,src2]
+; Do a = src0 * src1 + (1-src0) * src2
+; b:8bits, c:8bits, a:6bits
+; 72 TStates on 4 wait-states RAM
+; 56 TStates on 3 wait-states RAM
+; 16 Bytes
+#macro	__ilrp_src_()
+	ld	l, a
+	ld	h, b
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	neg
+	ld	l, a
+	ld	a, h
+	ld	h, c
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	add	a, h
+#endmacro
+
+; Power macro
+; pow [a]
+; Do hl = 2^a (overflow if a>23)
+; a:8bits
+; Max 500 TStates on 4 wait-states RAM
+; 9 Bytes
+#macro	__ipow_src_()
+	ld	b,a
+	inc	b			; assume no carry
+	sbc	hl, hl		; hl = 0
+	scf
+	adc	hl,hl
+	djnz	$-1
+#endmacro
+
+#macro	__islhl_src_()
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+#endmacro
+
+#macro	__ircp_src_()
+	call	IReciprocal
+#endmacro
+
+#macro align(boundary)
+	.fill boundary-($%boundary)
+#endmacro
+#define .align align(
+
+.addinstr ld a,hlu 3BF133E5 4
+
 #endif
 .list
