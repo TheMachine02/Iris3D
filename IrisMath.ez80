@@ -229,13 +229,15 @@ for (i = 1; i < arr.length; i++) {
     }
 arr[j] = newValue; 
 #endcomment
+; array = ix, each element are (9id+1col+3key)=13 bytes in size
+; ix =array, bc=length
 ; loop calculation
 	dec	bc
 	ld	a, c
 	dec	bc
 	inc	b
 ; bound check smc
-	lea	de, ix+1
+	lea	de, ix-12
 	sbc	hl, hl
 	sbc	hl, de
 	ld	(ISort_SMC), hl
@@ -283,7 +285,6 @@ _ISortNoCopy:
 	ret
 ITmpBlock:
 	.dl	0,0,0,0,0
-
 
 #comment
 ; array = ix, each element are (9id+1col+3key)=13 bytes in size

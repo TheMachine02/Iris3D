@@ -3,8 +3,10 @@
 #include	"IrisFramebuffer.ez80"
 #include	"IrisMath.ez80"
 #include	"IrisMatrix.ez80"
+#include	"IrisMesh.ez80"
 #include	"IrisQuaternion.ez80"
 #include	"IrisRaster.ez80"
+#include	"IrisTimer.ez80"
 #include	"IrisVector.ez80"
 
 ; functions

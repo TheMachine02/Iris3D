@@ -23,53 +23,45 @@ IDrawTriangle:
 #define	x2	8
 #define	y2	11
 
-#macro	swap(a,b)
-	ld	hl, (ix+a)
-	ld	de, (ix+b)
-	ld	(ix+a), de
-	ld	(ix+b), hl
-#endmacro
+	ld	hl, (ix+0)
+	ld	de, (ix+3)
+	ld	bc, (ix+6)
 
-	ld	a, (ix+y1)
-	ld	e, (ix+y0)
-	sub	a, e
-	jr	nc, _INoSwap1
-	add	a, e
-	ld	(ix+y0), a
-	ld	(ix+y1), e
-	swap(x0,x1)
+	ld	a, (de)
+	sub	a, (hl)
+	jr	c, _INoSwap1
+	ex	de, hl
 _INoSwap1:
-	ld	a, (ix+y2)
-	ld	e, (ix+y1)
-	sub	a, e	
+	ld	a, (bc)
+	sub	a, (hl)
 	jr	nc, _INoSwap2
-	add	a, e
-	ld	(ix+y2), e
-	ld	(ix+y1), a
-	swap(x1,x2)
+	push	hl
+	or	a, a
+	sbc	hl, hl
+	add	hl, bc
+	pop	bc
 _INoSwap2:
-	ld	a, (ix+y1)
-	ld	e, (ix+y0)
-	sub	a, e
-	jr	nc, _INoSwap3
-	add	a, e
-	ld	(ix+y0), a
-	ld	(ix+y1), e
-	swap(x0,x1)
+	ld	a, (de)
+	sub	a, (hl)
+	jr	c, _INoSwap3
+	ex	de, hl
 _INoSwap3:
-; y0<y1<y2
-;	ld	hl, (ix+x1)
-;	ld	de, (ix+x2)
+	ld	ix, ITmpAdress
+	ld	(ix+0), de
+	ld	(ix+3), hl
+	ld	(ix+6), bc
+	ex	de, hl
+
+	ld	a, (bc)
+	sub	a, (hl)
+	ld	(IDeltaY0), a
 	xor	a, a
-;	sbc	hl, de
-;	jr	c, $+4
-;	or	a, $30
-;
-;	ld	c, a
 
 ; changing edges are y0-y1 and y1-y2
-	ld	hl, (ix+x0)
-	ld	de, (ix+x2)
+	ld	iy, (ix+6)
+	ld	de, (iy+1)
+	inc	hl
+	ld	hl, (hl)
 	xor	a, $23			; inc hl
 	sbc	hl, de
 ; if x0>x1, edge goes to left
@@ -82,15 +74,17 @@ _INoSwap3:
 _IEdge0:	
 	ld	(IDeltaX0), hl
 	ld	(ISMC_Code0), a
-	ld	a, (ix+y2)
-	ld	e, (ix+y0)
-	sub	a, e
-	ld	(IDeltaY0), a
 ; block 0 is the constant block
-;	ld	a, c
+
 	xor	a, a
-	ld	hl, (ix+x0)
-	ld	de, (ix+x1)
+;	ld	hl, (ix+3)
+;	inc	hl
+;	ld	de, (hl)
+	ld	iy, (ix+3)
+	ld	de, (iy+1)
+	ld	hl, (ix+0)
+	inc	hl
+	ld	hl, (hl)
 	xor	a, $13			; inc de
 	sbc	hl, de
 ; if x0>x1, edge goes to left
@@ -103,17 +97,21 @@ _IEdge0:
 _IEdge1:	
 	ld	(IDeltaX1), hl
 	ld	(ISMC_Code1), a
-	ld	a, (ix+y1)
-	ld	e, (ix+y0)
-	sub	a, e
+;	ld	hl, (ix+3)
+;	ld	a, (hl)
+	ld	a, (iy+0)
+	ld	hl, (ix+0)
+	sub	a, (hl)
 	ld	(IDeltaY1), a
 ; block 1 is the variable block
 
-	ld	hl, (ix+y0)
+	inc	hl
+	ld	de, (hl)
+	dec	hl
+	ld	l, (hl)
 	ld	h, 160
 	mlt	hl
 	add	hl, hl
-	ld	de, (ix+x0)
 	add	hl, de
 	ld	de, (IFramebuffer)
 	add	hl, de
@@ -131,13 +129,17 @@ _IEdge1:
 	lea	bc, ix+0
 	pop	ix
 ;;;;;;;;;;;;;;;;;;;;;;
-	;ret
+;	ret
 ;;;;;;;;;;;;;;;;;;;;;;
 	push	bc
 	push	hl
 
-	ld	hl, (ix+x1)
-	ld	de, (ix+x2)
+	ld	hl, (ix+6)
+	inc	hl
+	ld	de, (hl)
+	ld	hl, (ix+3)
+	inc	hl
+	ld	hl, (hl)
 	or	a, $13			; inc de
 	sbc	hl, de
 ; if x0>x1, edge goes to left
@@ -150,20 +152,25 @@ _IEdge1:
 _IEdgeC1:	
 	ld	(IDeltaX1), hl
 	ld	(ISMC_Code1), a
-	ld	a, (ix+y2)
-	ld	e, (ix+y1)
-	sub	a, e
+	ld	hl, (ix+6)
+	ld	a, (hl)
+	ld	hl, (ix+3)
+	sub	a, (hl)
 	ld	(IDeltaY1), a
 
-	ld	hl, (ix+y1)
+	inc	hl
+	ld	de, (hl)
+	dec	hl
+	ld	l, (hl)
 	ld	h, 160
 	mlt	hl
 	add	hl, hl
-	ld	de, (ix+x1)
 	add	hl, de
 	ld	de, (IFramebuffer)
 	add	hl, de
 	ex	de, hl
+	sbc	hl, hl
+	add	hl, de
 
 	ld	iy, (IDeltaY1)
 
@@ -242,3 +249,5 @@ _ISpecial:
 	ld	(de), a
 	ld	a, c
 	jr	_IEndFill
+ITmpAdress:
+	.dl	0,0,0

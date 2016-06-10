@@ -1,0 +1,56 @@
+#define	ITIMER_CTRL	$F20030
+#define	ITIMER_COUNT	$F20000
+
+ICPUTimerStart:
+; now intialise and start the timer (1)
+	ld	hl, ITIMER_CTRL
+	ld	a, (hl)
+; CPU clock, not enable, count up
+	and	%11111000 
+	ld	(hl), a
+	inc	l
+;	ld	a, (hl)
+;	or	%00000010
+;	ld	(hl), a
+	set	1, (hl)
+; reset the value
+	xor	a, a
+	ld	hl, ITIMER_COUNT
+	ld	(hl), a
+	inc	l
+	ld	(hl), a
+	inc	l
+	ld	(hl), a
+	inc	l
+	ld	(hl), a
+	ld	hl, ITIMER_CTRL
+; start timer
+	set	0, (hl)
+	ret
+ICPUTimerRead:
+	ld	hl, ITIMER_CTRL
+; stop the timer
+	res	0, (hl)
+; read 24 bits value in the counter register
+	ld	hl, ITIMER_COUNT
+	ld	hl, (hl)
+	ret
+ICPUTimerConvms:
+	call	ICPUTimerRead
+; get value, divide by 48000
+	ret
+#comment
+ICPUTimerEvaluate:
+	ld	b, 0
+_ICPUTimerLoop:
+	push	bc
+	push	hl
+	ex	de, hl
+	call	ICPUTimerStart
+;call	_ind
+	call	ICPUTimerRead
+	pop	hl
+	pop	bc
+	djnz	
+	ret
+#endcomment

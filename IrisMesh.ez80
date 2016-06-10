@@ -1,0 +1,65 @@
+IMeshLoad:
+; load the mesh from an appv
+; hl : mesh name, a : format and options
+; format options:	bits
+; compressed		7
+; generate Z-table	6
+; format			5-0
+; error : c, ix = mesh adress
+	push	af
+	call	_mov9toOP1
+	call	_ChkFindSym
+	ret c
+	ex de,hl
+	xor a 
+	cp  b
+	jr z,_IMeshUnarchived
+	pop	af
+	scf
+	ret
+_IMeshUnarchived:
+; create Z table if asked
+	pop	af
+	tst	a, %10000000
+	jr	nz, _IMeshCompressed
+IMeshLoadRaw:
+	tst	a, %01000000
+	ret	z
+	and	%00111111
+	push	hl
+	pop	ix
+	ld	de, (ix+0)
+	add	hl, de	; hl point to start of index list
+	ld	bc, (ix+3)	; loop size
+	ld	de, 0
+	ld	e, a
+	ld	iy, IZSORT_TABLE
+_ILoadZTable:	
+; don't need to init (iy+0), IComputeDepth will do that for us
+	ld	(iy+3), hl
+	add	hl, de
+	lea	iy, iy+6
+	ld	a, b			; TODO : proper 16bits loop
+	or	c
+	jr	nz, _ILoadZTable
+	ret
+_IMeshCompressed:
+	ret
+;varName:
+;.db AppVarObj, "APPVAR",0
+; mesh format :
+; .dl index_offset
+; .dl index_size
+; .dl vertex_offset
+; .dl vertex_size
+; .vertex ...
+; .dl data
+
+IMeshReallocate:
+; reallocate the mesh vertex buffer or the z-sorting buffer
+; ix : mesh adress
+; hl : new adress
+; de : old adress
+	or	a, a
+	sbc	hl, de
+	ret

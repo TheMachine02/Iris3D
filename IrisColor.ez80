@@ -40,11 +40,31 @@ IMixRGB:
 	rra
 	add	a, c
 	ret
-IRBGScale:
+IColorMlt:
 ; color = color x factor
-; c is color, a is factor
-
+; c color, b factor
+	ld	h, b
+	ld	a, c
+	and	%00000111
+	ld	l, a
+	mlt	hl
+	ld	e, h
+	ld	h, b
+	ld	a, c
+	and	%00011000
+	ld	l, a
+	mlt	hl
+	ld	a, h
+	and	%00011000
+	or	e
+	ld	e, a
+	ld	h, b
+	ld	a, c
+	and	%11100000
+	ld	l, a
+	mlt	hl
+	ld	a, h
+	and	%11100000
+	or	e
 	ret
-
-
 

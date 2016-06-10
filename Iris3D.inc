@@ -72,6 +72,17 @@
 #define	ITRIANGLE_FAN	%10000011
 #define	IBACK_CULL		%00000001
 
+#define	IMESH_CNI		13		; color,normal,index
+#define	IMESH_CI		10		; color,index
+#define	IMESH_NI		12		; normal,index
+#define	IMESH_I		9		; index
+#define	IMESH_PACKED	%10000000	; compressed data
+#define	IMESH_SORTING	%01000000	; z-sorting
+
+#define	IVERTEX_BUFFER	$D0EA1F	; 1024 slots
+#define	IZSORT_TABLE	$D10A1F	; 2048 slots
+
+
 ; raster system include
 
 ; Color LCD include
@@ -103,7 +114,7 @@
 #define	IPositionZ		$D03609
 
 #define	IBUFFER_ADRESS	$D03200
-#define	IPIPE_ADRESS	IBUFFER_ADRESS + 512
+#define	IPIPE_ADRESS	IBUFFER_ADRESS
 #define	IPipelineState	IPIPE_ADRESS
 #define	IVertexShader	IPIPE_ADRESS
 #define	IGeomShader	IPIPE_ADRESS + 4
@@ -113,16 +124,14 @@
 ; 16 bytes structure
 
 #define	IVRAM			$E30800
-; 1024 bytes fast RAM (2TStates), texture, routine reallocate
+; 1024 bytes fast RAM (2TStates), routine reallocate
 
 ; limits
 
-#define	IMAX_LIGHT		0
-#define	IMAX_TEXTURE	0
-#define	IMAX_VSH_IN	0
-#define	IMAX_VSH_OUT	0
-#define	IMAX_GSH_OUT	0
-#define	IMAX_FSH_IN	0
+#define	IMAX_PLANE		0
+#define	IMAX_POLYGONS	2048
+#define	IMAX_VERTEX	1024
+#define	IMAX_VRAM		1024
 
 ; functions include
 
