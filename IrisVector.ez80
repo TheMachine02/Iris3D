@@ -184,6 +184,20 @@ IVectorDot:
 	sbc	hl, bc
 	ret
 #endif
+IVectorMlt:
+	ld	c, (ix)
+	ld	b, a
+	mlt	bc
+	ld	(ix), b
+	ld	c, (ix+1)
+	ld	b, a
+	mlt	bc
+	ld	(ix+1), b
+	ld	c, (ix+2)
+	ld	b, a
+	mlt	bc
+	ld	(ix+2), b
+	ret
 #ifdef	IUSE_FN_VECLENGTH
 IVectorLength:
 ; A lot of TStates

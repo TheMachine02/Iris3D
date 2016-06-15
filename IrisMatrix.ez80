@@ -74,7 +74,7 @@ IMatrixRotationY:
 IMatrixLoadRotation:
 	ret
 #ifdef	IUSE_FN_MATMULT
-IMatrixMult:
+IMatrixMlt:
 ; (hl) = (ix) * (iy)
 ; 116 bytes, ~3800 TStates
 	ex	de, hl

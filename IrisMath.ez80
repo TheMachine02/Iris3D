@@ -179,19 +179,18 @@ IFPCos:
 	inc	h
 IFPSin:
 	call	IQuatSin
+; divide by 64 to get a FP16.8 value
 	add	hl, hl
-	rra
 	add	hl, hl
-	ld	(__iwritetmp__), hl
-	ld	a, (__iwritetmp__)
+	ld	a, hlu
 	ld	c, h
-	rla
+	add	hl, hl
 	sbc	hl, hl
 	ld	h, a
 	ld	l, c
 	ret
 IComputeDepthList:
-	lea	ix, ix+4
+	lea	ix, ix+7
 	ld	a, c
 	dec	bc
 	inc	b
@@ -212,8 +211,8 @@ _IDepthLoop:
 	ld	de, (iy+4)
 	add	hl, de
 	
-	ld	(ix-4), hl
-	lea	ix, ix+13
+	ld	(ix-7), hl
+	lea	ix, ix+16
 	djnz	_IDepthLoop
 	dec	a
 	jr	nz, _IDepthLoop
@@ -237,20 +236,20 @@ arr[j] = newValue;
 	dec	bc
 	inc	b
 ; bound check smc
-	lea	de, ix-12
+	lea	de, ix-15
 	sbc	hl, hl
 	sbc	hl, de
 	ld	(ISort_SMC), hl
 _ISortOuterLoop:
 	push	bc
 _ISortInnerLoop:
-	lea	ix, ix+13
+	lea	ix, ix+16
 	ld	de, (ix+0) ;de
 	lea	iy, ix+0
 ISort_SMC=$+1
 	ld	bc, $000000
 _ISortWhile:
-	lea	iy, iy-13
+	lea	iy, iy-16
 	ld	hl, (iy+0)
 	or	a, a
 	sbc	hl, de
@@ -260,22 +259,22 @@ _ISortWhile:
 	jr	c, _ISortWhile
 _ISortQuit:
 	lea	hl, ix+0
-	lea	de, iy+13
+	lea	de, iy+16
 	sbc	hl, de
 	jr	z, _ISortNoCopy
 	push	hl
 	add	hl, de
 	ld	de, ITmpBlock
-	ld	bc, 13
+	ld	bc, 16
 	ldir
 	pop	bc
 	lea	hl, ix-1
-	lea	de, ix+12
+	lea	de, ix+15
 	lddr
 	ex	de, hl
 	inc	de
 	ld	hl, ITmpBlock
-	ld	c, 13
+	ld	c, 16
 	ldir
 _ISortNoCopy:
 	dec	a
@@ -284,7 +283,7 @@ _ISortNoCopy:
 	djnz	_ISortOuterLoop
 	ret
 ITmpBlock:
-	.dl	0,0,0,0,0
+	.dl	0,0,0,0,0,0
 
 #comment
 ; array = ix, each element are (9id+1col+3key)=13 bytes in size

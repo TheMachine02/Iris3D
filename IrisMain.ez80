@@ -31,10 +31,10 @@ IEngineInit:
 	ld	hl, IVRAMF1
 	ld	(IFramebuffer), hl
 ; test - reallocate IVector
-;	ld	hl, IVectorTransform
-;	ld	bc, 512
-;	ld	de, IVRAM
-;	ldir
+	ld	hl, IDrawTriangle
+	ld	bc, 512
+	ld	de, IVRAM
+	ldir
 	jp	IResetPalette
 IEngineQuit:
 	ld hl,0F50000h

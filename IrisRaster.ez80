@@ -76,6 +76,12 @@ _IEdge0:
 	ld	(ISMC_Code0), a
 ; block 0 is the constant block
 
+;	ld	a, $EB
+;	ld	(ISMC_Ex), a
+;	xor	a, a
+;	ld	(ISMC_Nop), a
+
+
 	xor	a, a
 ;	ld	hl, (ix+3)
 ;	inc	hl
@@ -103,15 +109,16 @@ _IEdge1:
 	ld	hl, (ix+0)
 	sub	a, (hl)
 	ld	(IDeltaY1), a
+	ld	iy, 0
+	ld	iyl, a
 ; block 1 is the variable block
 
+	ld	e, (hl)
+	ld	d, 160
+	mlt	de
 	inc	hl
-	ld	de, (hl)
-	dec	hl
-	ld	l, (hl)
-	ld	h, 160
-	mlt	hl
-	add	hl, hl
+	ld	hl, (hl)
+	add	hl, de
 	add	hl, de
 	ld	de, (IFramebuffer)
 	add	hl, de
@@ -119,29 +126,29 @@ _IEdge1:
 	sbc	hl, hl
 	add	hl, de
 
-	push	ix
 	ld	ix, (IDeltaY0)
-	ld	iy, (IDeltaY1)
 
 	or	a, a
 	call	nz, __ITriangleInner__
 
-	lea	bc, ix+0
-	pop	ix
 ;;;;;;;;;;;;;;;;;;;;;;
 ;	ret
 ;;;;;;;;;;;;;;;;;;;;;;
-	push	bc
-	push	hl
 
-	ld	hl, (ix+6)
+	push	hl
+	ld	iy, ITmpAdress
+	ld	hl, (iy+6)
+	ld	a, (hl)
 	inc	hl
 	ld	de, (hl)
-	ld	hl, (ix+3)
+	ld	hl, (iy+3)
+	sub	(hl)
+	ld	(IDeltaY1), a
+	ld	c, a
 	inc	hl
 	ld	hl, (hl)
-	or	a, $13			; inc de
 	sbc	hl, de
+	ld	a, $13
 ; if x0>x1, edge goes to left
 	jr	c, _IEdgeC1
 ; edge goes to left
@@ -152,35 +159,24 @@ _IEdge1:
 _IEdgeC1:	
 	ld	(IDeltaX1), hl
 	ld	(ISMC_Code1), a
-	ld	hl, (ix+6)
-	ld	a, (hl)
-	ld	hl, (ix+3)
-	sub	a, (hl)
-	ld	(IDeltaY1), a
-
+	ld	hl, (iy+3)
+	ld	iy, 0
+	ld	a, c
+	ld	iyl, a
+	ld	e, (hl)
+	ld	d, 160
+	mlt	de
 	inc	hl
-	ld	de, (hl)
-	dec	hl
-	ld	l, (hl)
-	ld	h, 160
-	mlt	hl
-	add	hl, hl
+	ld	hl, (hl)
+	add	hl, de
 	add	hl, de
 	ld	de, (IFramebuffer)
 	add	hl, de
 	ex	de, hl
-	sbc	hl, hl
-	add	hl, de
-
-	ld	iy, (IDeltaY1)
-
 	pop	hl
-	pop	ix
 	or	a, a
 	ret	z
-
 __ITriangleInner__:
-
 IDeltaX0=$+1
 	ld	bc, $000000
 	add	ix, bc
@@ -195,7 +191,6 @@ ISMC_Code0=$
 	add	ix, bc
 	jr	nc, __IBlockRestoreLoop0__
 __INoSignChange0__:
-
 IDeltaX1=$+1
 	ld	bc, $000000
 	add	iy, bc
@@ -209,10 +204,10 @@ ISMC_Code1=$
 	nop
 	add	iy, bc	
 	jr	nc, __IBlockRestoreLoop1__
+	or	a, a
 __INoSignChange1__:
 ; hl = adress1, de = adress2
 	push	hl
-	or	a, a
 	sbc	hl, de
 	jr	z, _ISpecial
 	push	de
@@ -251,3 +246,78 @@ _ISpecial:
 	jr	_IEndFill
 ITmpAdress:
 	.dl	0,0,0
+
+#comment
+	push	hl
+	push	de
+	sbc	hl, de
+	jr	nc, _ISwap
+	add	hl, de
+	ex	de, hl
+	or	a, a
+	sbc	hl, de
+_ISwap:
+	inc.s	bc
+	ld	b, h
+	ld	c, l
+	add	hl, de
+IColor=$+1
+	ld	(hl), $00
+	jr	z, _ILineNull
+	ex	de, hl
+	sbc	hl, hl
+	add	hl, de
+	dec	de
+	lddr
+_ILineNull:
+	pop	de
+	pop	hl
+
+
+
+ISMC_Nop=$
+	nop
+	sbc	hl, de
+	jr	c, _ISwap
+_IEntryPoint:
+	inc.s	bc
+	ld	b, h
+	ld	c, l
+	add	hl, de
+IColor=$+1
+	ld	(hl), $00
+	jr	z, _ILineNull
+	push	hl
+	ex	de, hl
+	sbc	hl, hl
+	add	hl, de
+	dec	de
+	lddr
+	inc	de
+	pop	hl
+_ILineNull:
+	ld	c, 64
+	inc	b
+	add	hl, bc
+	ex	de, hl
+	add	hl, bc
+ISMC_Ex=$
+	ex	de, hl
+	dec	a
+	jr	nz, __ITriangleInner__
+	ret
+_ISwap:
+; 84 TStates overhead
+	ld	c, a
+	ld	a, $EB
+	ld	(ISMC_Nop), a
+	xor	a, a
+	ld	(ISMC_Ex), a
+	add	hl, de
+	ex	de, hl
+	sbc	hl, de
+	ld	a, c
+	jr	_IEntryPoint
+ITmpAdress:
+	.dl	0,0,0
+#endcomment

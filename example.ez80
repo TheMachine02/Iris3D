@@ -8,6 +8,11 @@
 
 	call	ILoadMesh
 
+;	ld	hl, AppvName
+;	ld	a, IMESH_CI | IMESH_SORTING
+;	call	IMeshLoad
+;	ld	(Model), ix
+
 ;	ld	hl, 0
 	ld	hl, 256
 	ld	(EulerAngle), hl
@@ -16,21 +21,39 @@
 	lea	hl, ix+0
 	call	IMatrixLoadIdentity
 	;ld	hl, 32768  ; all
-	ld	hl, 130000	; tomberry
+	ld	hl, 49152
+	;ld	hl, 130000	; tomberry
 	;ld	hl, 13000  ; lara
 	;ld	hl, 12000	;sier
 	ld	(ix+15), hl
 
 MainLoop:
-	call	ICPUTimerStart
 	ld	hl, (EulerAngle)
+;	ld	hl, 128
 	ld	iy, Quaternion
 	ld	ix, UnitVector
 	call	IQuaternionRotationAxis
 	ld	ix, WorldMatrix
 	call	IQuaternionGetMatrix
 
+;	ld	hl, (EulerAngle)
+;	call	IQuatCos
+;	ld	a, h
+;	ld	(Light), a
+;	ld	hl, (EulerAngle)
+;	call	IQuatSin
+;	ld	a, h
+;	ld	(Light+2), a
+
+
 #define	VERTEX_BUFFER	saveSScreen	; 21945 bytes
+
+;	ld	ix, (Model)
+;	ld	hl, (ix+9)
+;	ld	de, (ix+6)
+;	add	ix, de
+;	lea	iy, ix+0
+;	ld	ix, IVERTEX_BUFFER + 8
 
 	ld	hl, VertexCount		; 890000 TStates
 	ld	ix, VERTEX_BUFFER + 8
@@ -40,7 +63,6 @@ _VertexStream:
 	push	ix
 	ld	ix, WorldMatrix
 	call	IVectorTransform
-	;call	IVRAM
 	call	IProject
 	pop	ix
 	ld	(ix+1), hl
@@ -64,23 +86,53 @@ _VertexStream:
 
 	;call	IWait
 	;ld	c, %01001010		; grey
-	;ld	c, %11111111
-	ld	c, %00000000
-	call	IClear	; 540000 TStates
+	ld	c, %11111111
+	;ld	c, %00000000
+	call	IFastClear	; 540000 TStates
+
+;	call	ICPUTimerStart
 
 	ld	hl, FaceCount	; 2300000 TStates
 	ld	iy, FaceData
 _FaceStream:
 	push	hl
 	push	iy
-	lea	iy, iy+3
-	ld	a, (iy+0)
-	ld	(IColor), a
-	inc	iy
-;	ld	ix, WorldMatrix+6
-;	call	IVectorDot
+;	lea	iy, iy+3
+;	ld	c, (iy+0)
+;	ld	b, (iy+1)
+;	call	IColorMlt
+;	ld	(IColor), a
+;	inc	iy
+	lea	iy, iy+4
+
+	ld	ix, Light
+	call	IVectorDot
 ;	bit	7, h
 ;	jr	z, _iiii
+	bit	7, h
+	jr	nz, _i2
+	ld	hl, 0
+_i2:
+	or	a, a
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+	ld	a, l
+	sra	h \ rra
+	sra	h \ rra
+	sra	h \ rra
+	sra	h \ rra
+	rr	h
+	jr	nc, $+4
+	ld	a, 255
+
+	ld	b, a
+	dec	iy
+	ld	c, (iy+0)
+	call	IColorMlt
+	ld	(IColor), a
+
+	lea	iy, iy+4
 
 ; 308TStates
 ;	ld	ix, test
@@ -108,13 +160,12 @@ _FaceStream:
 _iiii:
 	pop	iy
 	pop	hl
-	lea	iy, iy+13
+	lea	iy, iy+16
 	dec	hl
 	ld	a, h
 	or	l
 	jp	nz, _FaceStream
-	call	ICPUTimerRead
-	halt
+;	call	ICPUTimerRead
 
 ; ISwap
 	call	IFlush
@@ -127,7 +178,7 @@ kwait:
 	cp a,(hl)
 	jr nz,kwait
 
-	ld	de, 1
+	ld	de, 2
 	ld	a, ($F5001E)
 	bit	1, a
 	jr	z, _kskip
@@ -135,7 +186,7 @@ kwait:
 	add	hl, de
 	ld	(EulerAngle), hl
 _kskip:
-	ld	de, -1
+	ld	de, -2
 	ld	a, ($F5001E)
 	bit	2, a
 	jr	z, _kskip2
@@ -151,8 +202,10 @@ _kskip2:
 	jp	IEngineQuit
 
 #include	"IrisMain.ez80"
-test:
-	.dl	189,0,90,64,150,80
+AppvName:
+	.db	AppVarObj, "Chocobo", 0
+Model:
+	.dl	0
 UnitVector:
 	.dl	0,16384,0
 Quaternion:
@@ -161,18 +214,20 @@ WorldMatrix:
 	.dl	0,0,0,0,0,0
 EulerAngle:
 	.dl	0,0,0
+Light:
+	.db	64,0,0
 MdlData:
 ;#include	"tools/sierpinski.inc"
 ;#include	"tools/Model.inc"
 ;#include	"tools/cube.inc"
 ;#include	"tools/walrii.inc"
 ;#include	"tools/lara.inc"
-;#include	"tools/chocobo.inc"
+#include	"tools/chocobo.inc"
 ;#include	"tools/tomberry.inc"
-#include	"tools/starfox.inc"
+;#include	"tools/starfox.inc"
 
 ILoadMesh:
-	ld	ix, FaceData+4
+	ld	ix, FaceData+7
 	ld	bc, FaceCount
 	ld	de, VERTEX_BUFFER
 _ILoadingLoop:
@@ -194,7 +249,7 @@ _ILoadingLoop:
 	add	hl, hl
 	add	hl, de
 	ld	(ix+6), hl
-	lea	ix, ix+13
+	lea	ix, ix+16
 	dec	bc
 	ld	a, b
 	or	c

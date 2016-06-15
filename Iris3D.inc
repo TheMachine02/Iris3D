@@ -306,6 +306,7 @@ val
 #define .align align(
 
 .addinstr ld a,hlu 3BF133E5 4
+.addinstr ld a,deu 3BF133D5 4
 
 #endif
 .list

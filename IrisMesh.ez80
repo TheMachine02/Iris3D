@@ -11,12 +11,12 @@ IMeshLoad:
 	call	_ChkFindSym
 	ret c
 	ex de,hl
-	xor a 
-	cp  b
-	jr z,_IMeshUnarchived
-	pop	af
-	scf
-	ret
+;	xor a 
+;	cp  b
+;	jr z,_IMeshUnarchived
+;	pop	af
+;	scf
+;	ret
 _IMeshUnarchived:
 ; create Z table if asked
 	pop	af
@@ -26,6 +26,7 @@ IMeshLoadRaw:
 	tst	a, %01000000
 	ret	z
 	and	%00111111
+	inc	hl \ inc hl
 	push	hl
 	pop	ix
 	ld	de, (ix+0)
@@ -39,11 +40,13 @@ _ILoadZTable:
 	ld	(iy+3), hl
 	add	hl, de
 	lea	iy, iy+6
+	dec	bc
 	ld	a, b			; TODO : proper 16bits loop
 	or	c
 	jr	nz, _ILoadZTable
 	ret
 _IMeshCompressed:
+	scf
 	ret
 ;varName:
 ;.db AppVarObj, "APPVAR",0

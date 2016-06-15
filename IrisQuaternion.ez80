@@ -2,37 +2,6 @@
 
 ; code start - Quaternions utility functions
 
-#macro	__IQuatMul__()
-	call	IFPMul
-	add	hl, hl
-	rra
-	add	hl, hl
-	ld	(__iwritetmp__), hl
-	rla
-	ld	a, (__iwritetmp__+2)
-	ld	c, h
-	sbc	hl, hl
-	ld	h, a
-	ld	l, c
-	ld	a, (__iwritetmp__)	
-#endmacro
-#define	IQuatMul		__IQuatMul__()
-
-#macro	__iquatsquare__()
-	call	IFPSquare
-	add	hl, hl
-	rra
-	add	hl, hl
-	ld	(__iwritetmp__), hl
-	rla
-	ld	a, (__iwritetmp__+2)
-	ld	c, h
-	sbc	hl, hl
-	ld	h, a
-	ld	l, c
-	ld	a, (__iwritetmp__)
-#endmacro
-
 #ifdef	IUSE_FN_QUATLOADIDENTITY
 IQuaternionLoadIdentity:
 	ex	de, hl
@@ -80,7 +49,6 @@ IQuaternionNormalize:
 	ret
 #endif
 #ifdef	IUSE_FN_QUATGETMATRIX
-#define	IQuatSquare	__iquatsquare__()
 IQuaternionGetMatrix:
 ; iy quaternion, ix matrix
 ; (qw, qx, qy, qz)
@@ -89,16 +57,14 @@ IQuaternionGetMatrix:
 ; 2*qx*qz - 2*qy*qw 	2*qy*qz + 2*qx*qw 	1 - 2*qx² - 2*qy²
 	ld	hl, (iy+IQZ)
 	ld	de, (iy+IQW)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qz*qw
 	push	hl
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQY)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qx*qy
 	pop	de
 	or	a, a
@@ -110,16 +76,14 @@ IQuaternionGetMatrix:
 ; next
 	ld	hl, (iy+IQY)
 	ld	de, (iy+IQW)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qw*qy
 	push	hl
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQZ)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qx*qz
 	pop	de
 	or	a, a
@@ -131,16 +95,14 @@ IQuaternionGetMatrix:
 ; next
 	ld	hl, (iy+IQX)
 	ld	de, (iy+IQW)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qx*qw
 	push	hl
 	ld	hl, (iy+IQY)
 	ld	de, (iy+IQZ)
-	IQuatMul
-	rla
-	adc	hl, hl
+	call	IQuatMlt
+	add	hl, hl
 ; 2*qy*qz
 	pop	de
 	or	a, a
@@ -151,15 +113,11 @@ IQuaternionGetMatrix:
 	ld	(ix+7), h
 ; 1-2*qy²-2qz²
 	ld	hl, (iy+IQY)
-	IQuatSquare
-	rla
-	adc	hl, hl
+	call	IQuatSquare
 	push	hl
 	push	hl
 	ld	hl, (iy+IQZ)
-	IQuatSquare
-	rla
-	adc	hl, hl
+	call	IQuatSquare
 	ex	de, hl
 	pop	bc
 	ld	hl, $004000
@@ -171,9 +129,7 @@ IQuaternionGetMatrix:
 ; 1-2*qz²-2qx²	
 	push	de
 	ld	hl, (iy+IQX)
-	IQuatSquare
-	rla
-	adc	hl, hl
+	call	IQuatSquare
 	ex	de, hl
 	pop	bc
 	ld	hl, $004000
@@ -206,17 +162,42 @@ IQuaternionRotationAxis:
 	ex	de, hl
 ; DE is never destroyed by the macro's
 	ld	hl, (ix+0)
-	IQuatMul
+	call	IQuatMlt
 	ld	(iy+IQX), hl
 	ld	hl, (ix+3)
-	IQuatMul
+	call	IQuatMlt
 	ld	(iy+IQY), hl
 	ld	hl, (ix+6)
-	IQuatMul
+	call	IQuatMlt
 	ld	(iy+IQZ), hl
 	pop	hl
 	call	IQuatCos
 	ld	(iy+IQW), hl
+	ret
+IQuatMlt:
+	call	IFPMul
+; and now divide by 64
+	add	hl, hl
+	add	hl, hl
+	ld	a, hlu
+	ld	c, h
+	add	hl, hl
+	sbc	hl, hl
+	ld	h, a
+	ld	l, c	
+	ret
+IQuatSquare:
+	call	IFPSquare
+; divide by 32
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ld	a, hlu
+	ld	c, h
+	or	a, a
+	sbc	hl, hl
+	ld	h, a
+	ld	l, c
 	ret
 IQuatCos:
 	inc	h

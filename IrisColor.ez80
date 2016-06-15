@@ -24,18 +24,22 @@ IMixR5G6B5:
 	rr	l
 	add	hl, bc
 	ret
-IMixRGB:
+ICOlorMix:
+; RBG color
 ; 60 TStates [without call]//15
 ; mix h with l
 	ld	a, h
 	and	l
-	and	%00100101
+;	and	%00100101
+	and	%00101001
 	ld	c, a
 	ld	a, l
-	and	%11011011
+;	and	%11011011
+	and	%11010110
 	ld	l, a
 	ld	a, h
-	and	%11011011
+;	and	%11011011
+	and	%11010110
 	add	a, l
 	rra
 	add	a, c
@@ -48,7 +52,9 @@ IColorMlt:
 	and	%00000111
 	ld	l, a
 	mlt	hl
-	ld	e, h
+	ld	a, h
+	and	%00000111
+	ld	e, a
 	ld	h, b
 	ld	a, c
 	and	%00011000
