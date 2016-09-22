@@ -1,0 +1,351 @@
+#define	ITRIANGLE_LIST	$D0EA1F
+
+#macro	IBucketClear()
+	ld	bc, 511
+	ld	hl, IDEPTH_BUCKET+511
+	ld	de, IDEPTH_BUCKET+510
+	ld	(hl), $00
+	lddr
+#endmacro
+#define	bucketclr		IBucketClear()	; cst : 3641 TStates
+
+#comment
+;IDepthSort:
+; max IMAX_TRIANGLES triangles
+; ITRIANGLE_LIST is a semi cst list pointing to adress of triangle data. Allow accumulated models
+read triangle_list -> write to tmpbuff0
+sort tmpbuff0 to tmpbuff1
+sort tmpbuff1 to tmpbuff0
+sort tmpbuff0 to draw_list, no key write
+drawing : read draw_list
+#endcomment
+
+#ifdef	IRIS_CORE_depthsort
+IDepthSort:
+; create tmp buffers
+	ld	hl, (IFramebuffer)
+	ld	(IRead_tmpbuffer0), hl
+	ld	(IWrite_tmpbuffer0), hl
+	ld	de, IMAX_TRIANGLE*6
+	add	hl, de
+	ld	(IRead_tmpbuffer1), hl
+	ld	(IWrite_tmpbuffer1), hl
+
+; read triangle_list, write to draw_list
+	push	bc
+	bucketclr
+	pop	bc
+
+	ld	iy, ITRIANGLE_LIST
+	ld	ix, (IFramebuffer)	; tmp buffer0
+	ld	a, c
+	dec	bc
+	inc	b
+;	ld	c, b
+;	ld	b, a
+_IBucketGenerateOuter:
+	push	bc
+	ld	bc, 5
+_IBucketGenerateInner:
+;	push	af
+	push	iy
+	ld	iy, (iy+0)
+;	ld	a, (iy+0)
+	ld	(ix+3), iy
+	ld	de, (iy+4)
+	ld	hl, (iy+7)
+	ld	iy, (iy+10)
+	add	hl, bc
+	ld	hl, (hl)
+	ex	de, hl
+	add	hl, bc
+	ld	hl, (hl)
+	add	hl, de
+	ld	de, (iy+5)
+	add	hl, de
+	pop	iy
+;	cp	74
+;	jr	nz, +_		; depth offset
+;	ld	de, -1024
+;	add	hl, de
+;_:
+	ld	de, 2^23
+	add	hl, de
+
+	ld	(ix+0), hl
+	ld	e, l
+	ld	hl, IDEPTH_BUCKET
+	ld	l, e
+	inc	(hl)
+	jr	nz, _IHSBSkip
+	inc	h
+	inc	(hl)
+_IHSBSkip:
+
+	lea	ix, ix+6
+_IDiscardTriangle:
+	lea	iy, iy+3
+;	pop	af
+	dec	a
+	jr	nz, _IBucketGenerateInner
+	pop	bc
+;	dec	c
+;	jr	nz, _IBucketGenerateOuter
+	djnz	_IBucketGenerateOuter
+; restore index position in array	
+	ld	hl, IDEPTH_BUCKET+512-1
+	ld	d, (hl)
+	dec	h
+	ld	e, (hl)
+	dec	l
+_IRestoreBucketLoop0:
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	dec	l
+	jr	nz, _IRestoreBucketLoop0
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+; and copy to the correct position
+	lea	ix, ix-6
+
+; reset bcu
+	inc.sil	bc
+	ld	b, d
+	ld	c, e
+	ld	(IBatchSize), bc
+
+; save many time the size(opt, push ld a,c/dec.s bc/inc b?)
+	ld	a, c
+	dec	bc
+	inc	b
+	ld	c, a
+
+	push	bc
+	push	bc
+	push	bc
+	push	bc
+
+	ld	a, c
+;	dec.sil	bc
+;	dec	bc
+;	inc	b
+_IFillBucketOuter0:
+	push	bc
+	ld	b, 0
+_IFillBucketInner0:
+	ld	hl, IDEPTH_BUCKET+6
+	ld	c, l
+	ld	l, (ix+0)
+	ld	e, (hl)
+	inc	h
+	ld	d, (hl)
+	dec	de
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+; de*6+write_buffer
+	ld	h, c
+	ld	l, d
+	ld	d, c
+	mlt	hl
+	mlt	de
+	ld	h, l
+	ld	l, b
+	add	hl, de
+IWrite_tmpbuffer1=$+1
+	ld	de, $0
+	add	hl, de
+	ex	de, hl
+	lea	hl, ix+0
+	ldir
+	lea	ix, ix-6
+	dec	a
+	jr	nz, _IFillBucketInner0
+	pop	bc
+	djnz	_IFillBucketOuter0
+
+IRead_tmpbuffer1=$+2
+	ld	ix, $0
+
+	bucketclr
+; restore size
+	pop	bc
+;	ld	hl, IBUCKET
+	ld	a, c
+;	dec	bc
+;	inc	b
+	ld	c, b
+	ld	b, a
+	ld	e, 6
+	ld	l, (ix+1)
+	ld	a, e
+	add	a, (hl)
+	ld	(hl), a
+	jr	nc, $+5
+	inc	h
+	inc	(hl)
+	dec	h
+	lea	ix, ix+6
+	djnz	$-14
+	dec	c
+	jr	nz, $-17
+	ld	l, 255
+	ld	e, (hl)
+	inc	h
+	ld	d, (hl)
+	dec	h
+	dec	l
+_IRestoreBucket1:
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	dec	l
+	jr	nz, _IRestoreBucket1
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	lea	ix, ix-6
+
+	pop	bc
+	ld	a, c
+;	dec.sil	bc
+;	dec	bc
+;	inc	b
+_IFillBucketOuter1:
+	push	bc
+	ld	b, 0
+_IFillBucketInner1:
+	ld	hl, IDEPTH_BUCKET+6
+	ld	c, l
+	ld	l, (ix+1)
+	ld	e, (hl)
+	inc	h
+	ld	d, (hl)
+	ex	de, hl
+	sbc.sil	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+IWrite_tmpbuffer0=$+1
+	ld	hl, $0
+	add	hl, de
+	ex	de, hl
+	lea	hl, ix+0
+	ldir
+	lea	ix, ix-6
+	dec	a
+	jr	nz, _IFillBucketInner1
+	pop	bc
+	djnz	_IFillBucketOuter1
+	
+IRead_tmpbuffer0=$+2
+	ld	ix, $0
+
+	bucketclr
+
+	pop	bc
+;	ld	hl, IBUCKET
+	ld	a, c
+;	dec	bc
+;	inc	b
+	ld	c, b
+	ld	b, a
+	ld	e, IBATCH_DATA_SIZE
+	ld	l, (ix+2)
+	ld	a, e
+	add	a, (hl)
+	ld	(hl), a
+	jr	nc, $+5
+	inc	h
+	inc	(hl)
+	dec	h
+	lea	ix, ix+6
+	djnz	$-14
+	dec	c
+	jr	nz, $-17
+	ld	l, 255
+	ld	e, (hl)
+	inc	h
+	ld	d, (hl)
+	dec	h
+	dec	l
+_IRestoreBucket2:
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	dec	l
+	jr	nz, _IRestoreBucket2
+	ld	c, (hl)
+	inc	h
+	ld	b, (hl)
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	lea	ix, ix-6
+
+	pop	bc
+	ld	a, c
+;	dec	bc
+;	inc	b
+	inc	l
+_IFillBucket2:
+	ld	l, (ix+2)
+	ld	e, (hl)
+	inc	h
+	ld	d, (hl)
+	dec.sil	de
+	dec	de
+	dec	de
+	ld	(hl), d
+	dec	h
+	ld	(hl), e
+	ld	iy, IBATCH_DATA
+	add	iy, de
+; copy only the triangle adress
+	ld	de, (ix+3)
+	ld	(iy+0), de
+
+	lea	ix, ix-6
+	dec	a
+	jr	nz, _IFillBucket2
+	djnz	_IFillBucket2
+
+	ret
+
+#endif

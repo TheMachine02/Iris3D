@@ -1,0 +1,433 @@
+; IClipTriangle:
+; vbo structure :
+; code - 1 byte
+; screen y - 1
+; screen x - 3
+; world x
+; world y
+; world z
+; attrib 0
+; attrib 1
+; packed in 16 bytes
+; start adress point to code
+; switch to screen pos : +1
+; switch to world pos  : +5
+#define  IVERTEX_CACHE_OFFSET    5
+#define  IVERTEX_RASTER_OFFSET   1
+#define  IVERTEX_CACHE_SIZE      16
+#define  IPDivBit                %00000001
+; plane x right : plane x left : plane y up : plane y down : 0 : 0 : 0 : 0 
+; IPDivBit:1   
+#define  IPlaneBit0              %10000000
+#define  IPlaneBit1              %01000000
+#define  IPlaneBit2              %00100000
+#define  IPlaneBit3              %00010000
+
+IProject:
+; to get 1 bit more : ;   add   hl, hl \ sbc hl, bc
+   ld   hl, (ix+3)
+   ld   bc, (ix+6)
+   xor a   
+   bit 7,(ix+5)
+ ;  ld   a, (ix+5)
+ ;  rlca
+   jr   z, IProjectYAbs
+ ;  or   a, a
+   ex   de, hl
+   sbc   hl, hl
+   sbc   hl, de
+IProjectYAbs:
+ ;  and   %00000001
+   rla
+   sbc   hl, bc
+   jp  nc, IProjectClipY
+   add   hl, bc
+
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ adc a,a
+   cpl
+   add   a, a
+   inc   a
+   ld   l, ISCREEN_HEIGHT/2+1 ;precision stuffs
+   ld   h, a
+   mlt   hl
+   ld   a, h
+
+   jr   nc, IProjectYCorrect
+   neg
+IProjectYCorrect:
+   add   a, ISCREEN_HEIGHT/2
+   push  af
+; project x coordinate
+   ld   hl, (ix+0)
+   xor   a
+   bit   7, (ix+2) 
+;  ld   a, (ix+2)
+ ;  rlca
+   jr   z, IProjectXAbs
+ ;  or   a, a
+   ex   de, hl
+   sbc   hl, hl
+   sbc   hl, de
+IProjectXAbs:
+ ;  and   %00000001
+   rla 
+  sbc   hl, bc
+   jr   nc, IProjectClipX
+   add   hl, bc
+
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+   add hl,hl \ sbc hl,bc \ adc a,a
+   cpl
+   inc   a
+   ld   c, a
+   ld   b, ISCREEN_WIDTH/2+1
+   mlt   bc
+   ld    a, b
+   sbc   hl, hl
+   jr   nc, IProjectXCorrect
+   neg
+   jr   z, IProjectXSpecial
+IProjectXCorrect:
+   ld   l, a
+   ld   de, ISCREEN_WIDTH/2
+   add   hl, de
+   pop   bc ; grab y in b
+   xor   a
+   ret
+IProjectXSpecial:
+   inc   hl
+   ld   l, 160
+   pop   bc
+   xor   a
+   ret
+IProjectClipY:
+   rrca
+   ccf
+   rra
+; a = y plane code   
+; continue on x code   
+   ld hl, (ix+0)
+   bit 7,(ix+2)
+   jr z, IProjectClipXAbs
+   ex de, hl
+   sbc   hl, hl
+   sbc   hl, de
+IProjectClipXAbs:
+   rra
+   sbc   hl, bc
+   jr   c,IProjectClipXIn     ; point is 'in' for x coordinate
+   rlca
+   rrca
+   ccf
+   rra
+   ret
+IProjectClipX:
+   pop   bc
+   rrca
+   ccf
+   rra
+   ret
+IProjectClipXIn:
+   rra
+   and   %00110000
+   ret
+   
+   
+IClipLine:
+   ld    a, (de)  ; load code
+   cp    IPDivBit
+   jr    nz, IClipCacheHit0
+   ld    ix, IVERTEX_CACHE_OFFSET
+   add   ix, de   ; ix = vertex world coordinate
+   push  hl
+   call  IProject
+   lea   hl, ix-3
+   ld    (hl), de ; write x
+   dec   hl
+   ld    (hl), b  ; write y
+   dec   hl
+   ld    (hl), a  ; write code
+   pop   de
+   ex    de, hl
+IClipCacheHit0:
+   ld    b, a     ; b is the first code
+   ex    de, hl
+   ld    a, (de)
+   cp    IPDivBit
+   jr    nz, IClipCacheHit1
+   ld ix, IVERTEX_CACHE_OFFSET
+   add   ix, de
+   push  hl
+   call  IProject
+   lea   hl, ix-3
+   ld (hl), de
+   dec   hl
+   ld (hl), b
+   dec   hl
+   ld (hl), a
+   pop   de
+IClipCacheHit1:
+   ex    de, hl
+   ld    c, a     ; c is the second code
+   or    b
+   ret   z        ; primitive is accepted
+   ld    a, c
+   and   b
+   ret   nz       ; primitive is discarded
+; line need cliping
+
+
+
+   xor   a     ; primitive is clipped
+   ret
+
+
+IClipInterpolate:
+; (hl-de)*bc+de
+   or   a, a
+   sbc   hl, de
+; 24 bits signed x 16 bits
+; hlu*b*256+(hlu*c+h*b)+(h*c+l*b)/256
+
+
+   
+
+
+
+   ret
+IClipDivide:
+; hl*65536/de->bc
+; 467 TStates
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   cpl
+   ld   b, a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ jr nc,$+3 \ add hl,de \ adc a,a
+   add   hl,hl \ sbc hl,de \ adc a,a
+   cpl
+   ld   c, a
+   ret
+
+#comment
+pseudo code algorithm
+
+for(bit in code of point1)
+   calculate plane & factor
+end
+if(no_bits):return old point
+if(bits)
+   project
+   create new tmp pt 1
+   discard if pt out
+
+for(bit in code of point2)
+   calculate plane & factor
+end
+if(no_bits):return old point
+if(bits)
+   return tmp point 2
+   project
+   discard if pt out
+
+return point1,point2
+
+; efficient, although some case could lead to bad cycles-wise behaviour
+
++early Z-cull in pipeline (all Z<0)
++depth key = z1+z2+z3+8000000
+; 
+
+; iy = adress of triangle
+calculate dot product
+if dot passed
+   transform vertex (cached)
+   (write vertex/vertex undivide code/trust bit reset)
+   calculate depth key : early cull
+   add depth offset
+   write key
+end
+   ret
+
+
+#define  ITransformBit   %00000010
+#define  IRIS_early_backface
+#define  IRIS_early_zcull
+#define  IRIS_vertex_cache
+#define  IRIS_z80_compatibility
+
+IVertexCacheReset:
+vxrst:  ; short name
+; about 28000TStates, need 10 vertices to compensate (chocobo:210vx)
+; z80 : about 5100 TStates, need 2 vertices removed to compensate
+   bucketclr
+   ld   hl, IVERTEX_CACHE
+   ld   de, IVERTEX_CACHE_SIZE
+   ld   a, ITransformBit
+   ld   b, d            ; b=32 on z80
+IVxResetLoop:
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add hl, de
+   ld  (hl), a
+   add  hl, de
+   ld  (hl), a
+   add  hl, de
+   djnz IVxResetLoop
+   ret
+   
+   
+IGeometryShader:
+geomshader:
+; iy = triangle, ix = tmp buffer
+   push  ix
+   inc   iy ; normal
+   ld ix, IWorldViewMatrix+6
+   call  dot
+   dec   iy
+   pop   ix
+   jp p, IGeometryNext
+   push  ix
+   ld hl, 8388608
+   ld (IDepthAverage), hl
+   
+   push  iy
+   lea   ix, ix-6
+   ld hl, (iy+4)
+   push  hl
+   ld hl, (iy+7)
+   push  hl
+   ld iy, (iy+10)
+   
+   ld a, (iy)
+   cp ITransformBit
+   jr nz, IVertexHit0
+   push  iy
+; switch to data adress   
+   call  vxtransf
+   pop   hl
+   ld (hl), IPDivBit
+   ld bc, IVERTEX_CACHE_OFFSET
+   add   hl, bc
+   ld de, IPosition
+   ld c, 9
+   ex de, hl
+   ldir
+IVertexHit0:
+   ld de, (iy+13)
+   ld hl, (IDepthAverage)
+   add   hl, de
+   ld (IDepthAverage), hl   
+   pop   iy
+   
+   ld a, (iy)
+   cp ITransformBit
+   jr nz, IVertexHit1
+   push  iy
+; switch to data adress   
+   call  vxtransf
+   pop   hl
+   ld (hl), IPDivBit
+   ld bc, IVERTEX_CACHE_OFFSET
+   add   hl, bc
+   ld de, IPosition
+   ld c, 9
+   ex de, hl
+   ldir
+IVertexHit1:
+   ld hl, (IDepthAverage)
+   ld de, (iy+13)
+   add   hl, de
+   ld (IDepthAverage), hl
+   pop   iy
+
+   ld a, (iy)
+   cp ITransformBit
+   jr nz, IVertexHit2
+   push  iy
+; switch to data adress   
+   call  vxtransf
+   pop   hl
+   ld (hl), IPDivBit
+   ld bc, IVERTEX_CACHE_OFFSET
+   add   hl, bc
+   ld de, IPosition
+   ld c, 9
+   ex de, hl
+   ldir
+IVertexHit2:
+   ld hl, (IDepthAverage)
+   ld de, (iy+13)
+   add   hl, de
+   ld de, 8388608
+   add   hl, de
+   pop   iy
+; write iy, write hl to (ix)
+   pop   ix
+   ld (ix+3), iy
+   ld (ix+0), hl
+   ld e,l
+   ld hl,IDEPTH_BUCKET
+   ld l,e
+   inc (hl)
+   jr nz, IGeometryBucket
+   inc h
+   inc (hl)
+IGeometryBucket:
+   lea   ix, ix+6
+IGeometryNext:
+   lea   iy, iy+IMESH_C1N3I9
+
+; ++write to tmp buffer OK
+; write key + id  OK
+; switch from x16 to x8
+; + early cull
+
+; iy -> data
+
+; (iy-base)/2+newbase
+; iy/2-base/2+newbase
+
+   lea   hl, iy+0
+   ld de, -IVERTEX_BUFFER
+   add   hl,  de
+   sra   h
+   rr l
+   ex de, hl
+   ld iy, (Model)
+   add   iy, de
+   inc   iy
+
+#endcomment

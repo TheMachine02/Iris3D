@@ -1,3 +1,7 @@
+#define	IRIS_CORE
+#define	IRIS_EXT_color
+#define	IRIS_EXT_timer
+;;#define	IRIS_EXT_alphatriangle
 #include	"Iris3D.inc"
 
 .org userMem - 2
@@ -6,35 +10,46 @@
 
 	call	IEngineInit
 
-	call	ILoadMesh
+	ld	hl, AppvName
 
-;	ld	hl, AppvName
-;	ld	a, IMESH_CI | IMESH_SORTING
-;	call	IMeshLoad
-;	ld	(Model), ix
+	ld	a, IMESH_C1N3I9
+	call	IMeshLoad
+	jp	c, IEngineQuit
+	ld	(Model), ix
 
-;	ld	hl, 0
-	ld	hl, 256
+	ld	hl, 0
+	;ld	hl, 256
 	ld	(EulerAngle), hl
 
 	ld	ix, WorldMatrix
 	lea	hl, ix+0
 	call	IMatrixLoadIdentity
-	;ld	hl, 32768  ; all
-	ld	hl, 49152
-	;ld	hl, 130000	; tomberry
-	;ld	hl, 13000  ; lara
-	;ld	hl, 12000	;sier
+	;ld	hl, 32768
+	;ld	hl, 48000
+	ld	hl, 24576	
+	;ld	hl, 12000
+	;ld	hl, 18432
+	;ld	hl, 7000
+	;ld	hl, 132768
+	;ld	hl, 150000
 	ld	(ix+15), hl
+	;ld	hl, -4096
+	;ld	hl, -2048
+	;ld	(ix+12), hl
 
 MainLoop:
+	call	ITimerStart
+
 	ld	hl, (EulerAngle)
-;	ld	hl, 128
 	ld	iy, Quaternion
 	ld	ix, UnitVector
 	call	IQuaternionRotationAxis
 	ld	ix, WorldMatrix
 	call	IQuaternionGetMatrix
+	lea	iy, ix+0
+	ld	ix, ScaleMatrix
+	ld	hl, WorldMatrix
+	call	IMatrixMlt
 
 ;	ld	hl, (EulerAngle)
 ;	call	IQuatCos
@@ -45,30 +60,28 @@ MainLoop:
 ;	ld	a, h
 ;	ld	(Light+2), a
 
+	ld	iy, (Model)
+	ld	hl, (iy+9)
+	ld	de, (iy+6)
+	add	iy, de
+	ld	ix, IVERTEX_BUFFER + 8
 
-#define	VERTEX_BUFFER	saveSScreen	; 21945 bytes
-
-;	ld	ix, (Model)
-;	ld	hl, (ix+9)
-;	ld	de, (ix+6)
-;	add	ix, de
-;	lea	iy, ix+0
-;	ld	ix, IVERTEX_BUFFER + 8
-
-	ld	hl, VertexCount		; 890000 TStates
-	ld	ix, VERTEX_BUFFER + 8
-	ld	iy, VertexData
 _VertexStream:
 	push	hl
 	push	ix
 	ld	ix, WorldMatrix
+	;halt
 	call	IVectorTransform
+	ld	ix, IPosition
 	call	IProject
 	pop	ix
-	ld	(ix+1), hl
-	ld	(ix+0), e
+	ld	(ix+2), hl
+	ld	(ix+1), b
+	ld	(ix+0), a
+; 46
+
 	ld	hl, (IPositionZ)
-	ld	(ix+4), hl
+	ld	(ix+5), hl
 	pop	hl
 	dec	hl
 	lea	ix, ix+8
@@ -77,42 +90,62 @@ _VertexStream:
 	or	l
 	jr	nz, _VertexStream
 
-	ld	bc, FaceCount		; 230000TStates
-	ld	ix, FaceData
-	call	IComputeDepthList
-	ld	bc, FaceCount
-	ld	ix, FaceData
-	call	IInsertionSort
+	ld	ix, (Model)
+	ld	bc, (ix+3)
+
+	call	IDepthSort
 
 	;call	IWait
 	;ld	c, %01001010		; grey
 	ld	c, %11111111
-	;ld	c, %00000000
-	call	IFastClear	; 540000 TStates
+;	ld	c, %00000000
+	call	IClear	; 540000 TStates
+;	call	IFastClear
+;	ld	hl, 0
+;	ld	(acc), hl
+;	ld	(IPixelCount), hl
 
-;	call	ICPUTimerStart
 
-	ld	hl, FaceCount	; 2300000 TStates
-	ld	iy, FaceData
+;	ld	iy, (Model)
+;	ld	hl, (iy+3)
+
+
+;	ld	hl, 0
+;	ld	(IPixelWrited), hl ;4192pxl wrietd
+
+	ld	hl, (IBatchSize)
+	ld	iy, IBATCH_DATA
+
+;	ld	a, $FF
+;	ld	(IColor), a
 _FaceStream:
+
 	push	hl
 	push	iy
-;	lea	iy, iy+3
-;	ld	c, (iy+0)
-;	ld	b, (iy+1)
-;	call	IColorMlt
+	ld	iy, (iy+0)
+	
+;	ld	a,iyl
+;	bit	1, a
+;	ld	a, $FF
+;	jr	z, $+4
+;	xor	%10110101
+
 ;	ld	(IColor), a
-;	inc	iy
-	lea	iy, iy+4
+
+
+	inc	iy		; get the normal
+	ld	ix, WorldMatrix+6
+	call	IVectorDot
+;	bit	7, h
+;	jr	z, _backface
+	jp	p, _backface
 
 	ld	ix, Light
 	call	IVectorDot
-;	bit	7, h
-;	jr	z, _iiii
 	bit	7, h
-	jr	nz, _i2
+	jr	nz, _InRange
 	ld	hl, 0
-_i2:
+_InRange:
 	or	a, a
 	ex	de, hl
 	sbc	hl, hl
@@ -123,54 +156,125 @@ _i2:
 	sra	h \ rra
 	sra	h \ rra
 	rr	h
-	jr	nc, $+4
-	ld	a, 255
-
+	jr	nc, _ComputeColor
+_MaxColor:
+	ld	a, (iy-1)
+	;ld	a, iyl
+	;ld	a, (IColor)
+	;ld	a, %00011110 ;ghost
+	;;ld	a, 228 ;gold(alpha)
+	jr	_End
+_ComputeColor:
+	add	a, 128
+	jr	c, _MaxColor
+	
 	ld	b, a
-	dec	iy
-	ld	c, (iy+0)
-	call	IColorMlt
-	ld	(IColor), a
+	ld	c, (iy-1)
+	;ld	a, (IColor)
+	;ld	c, a
+	;ld	c, iyl
+	;ld	c, %00011110
+	;;ld	c, 228
+	call	IColorScale
 
-	lea	iy, iy+4
+_End:
+;	call	ITestColMlt
 
-; 308TStates
-;	ld	ix, test
-;	ld	hl, (iy+0)
-;	ld	de, (hl)
-;	ld	(ix), de
-;;	inc	hl \ inc hl \ inc hl
-;	ld	a, (hl)
-;	ld	(ix+3), a
+;	ld	(IColor), a
+
+	;ld	a, (IColor)
+
+;	push	iy
+	ld	hl, (iy+3)
+	ld	de, (iy+6)
+	ld	bc, (iy+9)
+
+	ld	(COLOR), a
+	ld	a, (de)
+	or	(hl)
+	ld	ixl, a
+	ld	a, (bc)
+	or	ixl
+	jr	nz, _CULL
+
+;	push	iy
+COLOR=$+1
+	ld	a, $00
+	;ld	a, iyl
+	inc	bc
+	inc	de
+	inc	hl
+	call	IRasterTriangle
+_CULL:
+;	pop	iy
 ;	ld	hl, (iy+3)
-;	ld	de, (hl)
-;;	ld	(ix+4), de
-;	inc	hl \ inc hl \ inc hl
-;;	ld	a, (hl)
-;	ld	(ix+7), a
+;	ld	c, %11100000
+;	call	IRasterPixel
 ;	ld	hl, (iy+6)
-;	ld	de, (hl)
-;	ld	(ix+8), de
-;	inc	hl \ inc hl \ inc hl
-;	ld	a, (hl)
-;	ld	(ix+11), a
-	lea	ix, iy+0
-; RBG
-	call	IDrawTriangle
-_iiii:
+;	call	IRasterPixel
+;	ld	hl, (iy+9)
+;	call	IRasterPixel
+;
+
+	;call	IVRAM
+
+;	ld	(IAlphaColor), a
+;	ld	a, 32
+;		
+;	ld	(IAlpha), a
+;	call	IRasterAlphaTriangle
+;
+;	pop	iy	
+;	ld	hl, (iy+3)
+;	ld	de, (iy+6)
+;	inc	hl \ inc de
+;	call	ICXAAFillEdge
+;	ld	hl, (iy+6)
+;	ld	de, (iy+9)
+;	inc	hl \ inc de
+;	call	ICXAAFillEdge
+;	ld	hl, (iy+9)
+;	ld	de, (iy+3)
+;	inc	hl \ inc de
+;	call	ICXAAFillEdge
+
+
+;	call	ICPUTimerRead
+;	ld	hl, (acc)
+;	add	hl, de
+;	ld	(acc), hl
+
+_backface:
 	pop	iy
 	pop	hl
-	lea	iy, iy+16
+	lea	iy, iy+3
 	dec	hl
 	ld	a, h
 	or	l
 	jp	nz, _FaceStream
-;	call	ICPUTimerRead
+QUIT:
+	
+	call	ITimerRead
 
+
+;;	call	IFSAAPostFilter
+;
+;	ld	de, 0
+;	ld	a, 30
+;	ld	hl, 320
+;;;;	ld	b, 64*240/320
+;	ld	b, 180
+;;;	ld	ix, (IFramebuffer)
+;	ld	ix, TEXTURE-3
+;	call	ICopyTexImage2D
+;;	ld	a, 65
+;;	call	IBloomFilter
+;
 ; ISwap
 	call	IFlush
 
 KeyboardTest:
+	;di
 	ld hl,$F50000 
 	ld (hl),2
 	xor a,a
@@ -178,7 +282,7 @@ kwait:
 	cp a,(hl)
 	jr nz,kwait
 
-	ld	de, 2
+	ld	de, 8
 	ld	a, ($F5001E)
 	bit	1, a
 	jr	z, _kskip
@@ -186,7 +290,7 @@ kwait:
 	add	hl, de
 	ld	(EulerAngle), hl
 _kskip:
-	ld	de, -2
+	ld	de, -8
 	ld	a, ($F5001E)
 	bit	2, a
 	jr	z, _kskip2
@@ -198,132 +302,891 @@ _kskip2:
 	ld a,($F5001C)
 	bit 6,a 
 
+	;ei
+
 	jp	z, MainLoop
 	jp	IEngineQuit
 
+
+IFSAAPostFilter:
+	ld	hl, (IFramebuffer)
+	ld	ix, (IFramebuffer)
+	ld	c, 120
+	ld	b, 160
+Loop:
+	push	bc
+	ld	de, (hl)
+
+	ld	a, d
+	and	e
+	and	%00101001
+	ld	c, a
+	ld	a, e
+	and	%11010110
+	ld	e, a
+	ld	a, d
+	and	%11010110
+	add	a, e
+	rra
+	add	a, c
+	ld	b, a
+
+	ld	de, 320
+	add	hl, de
+	ld	de, (hl)
+	
+	ld	a, d
+	and	e
+	and	%00101001
+	ld	c, a
+	ld	a, e
+	and	%11010110
+	ld	e, a
+	ld	a, d
+	and	%11010110
+	add	a, e
+	rra
+	add	a, c
+
+	ld	d, a
+	ld	e, b
+	
+	ld	a, d
+	and	e
+	and	%00101001
+	ld	c, a
+	ld	a, e
+	and	%11010110
+	ld	e, a
+	ld	a, d
+	and	%11010110
+	add	a, e
+	rra
+	add	a, c
+
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	ld	de, -320
+	add	hl, de
+	ld	(hl), a
+	dec	hl
+	ld	(hl), a
+
+;	ld	(ix+0), a
+;	inc	ix
+
+	inc	hl \ inc hl
+
+	pop	bc
+	djnz	Loop
+	ld	de, 160
+	add	ix, de
+	ld	b, 160
+	ld	de, 320
+	add	hl, de
+	dec	c
+	jr	nz, Loop
+	ret
+
+
+
+
+IBloomFilter:
+; key color : a
+	ld	hl, (IFramebuffer)
+	ld	bc, 76800
+IBloomLoopBack:
+	cpir
+	ret	po
+; found a pixel !
+; apply bloom kernel
+	push	af
+	push	bc
+	push	hl
+	dec	hl
+	call	IBloomKernel
+	pop	hl
+	pop	bc
+	pop	af
+	jp	IBloomLoopBack
+
+IBloomKernel:
+; 5x5 pixel kernel
+; a=color
+	ld	c, a
+	dec	hl
+	dec	hl
+	ld	de, -640
+	add	hl, de
+; hl point to first pixel in square
+	ld	ix, __data__kernel
+	ld	b, 5
+_loop1:
+	push	bc
+	ld	b, 5
+_loop2:
+	push	bc
+	ld	a, (ix)
+	sub	16
+	flrp	(hl), c, a
+	ld	de, 76800
+	add	hl, de
+	ld	(hl), a
+	ld	de, -76800
+	add	hl, de
+	inc	ix
+	inc	hl
+	pop	bc
+	djnz	_loop2
+	ld	de, 315
+	add	hl, de
+	pop	bc
+	djnz	_loop1
+	ret
+__data__block:
+	.fill	25
+__data__kernel:
+	.db	56,48,40,48,56
+	.db	48,32,24,32,48
+	.db	40,24,16,24,40	
+	.db	48,32,24,32,48
+	.db	56,48,40,48,56
+
+
+
+
 #include	"IrisMain.ez80"
+
 AppvName:
-	.db	AppVarObj, "Chocobo", 0
+	.db	AppVarObj, "Chocobo",0
+ScaleMatrix:
+	.db	77,0,0		; 44
+	.db	0,102,0		; 58
+	.db	0,0,64		; 37
 Model:
 	.dl	0
 UnitVector:
 	.dl	0,16384,0
+;	.dl	16384,0,0
 Quaternion:
 	.dl	0,0,0,0
+QuatMatrix:
+	.dl	0,0,0,0,0,0
 WorldMatrix:
 	.dl	0,0,0,0,0,0
 EulerAngle:
 	.dl	0,0,0
 Light:
-	.db	64,0,0
-MdlData:
-;#include	"tools/sierpinski.inc"
-;#include	"tools/Model.inc"
-;#include	"tools/cube.inc"
-;#include	"tools/walrii.inc"
-;#include	"tools/lara.inc"
-#include	"tools/chocobo.inc"
-;#include	"tools/tomberry.inc"
-;#include	"tools/starfox.inc"
+	.db	0,-45,45
+;	.db	0,-45,-45
+;	.db	-64,0,0
 
-ILoadMesh:
-	ld	ix, FaceData+7
-	ld	bc, FaceCount
-	ld	de, VERTEX_BUFFER
-_ILoadingLoop:
-	ld	hl, (ix+0)
+
+#comment
+ITestColMlt:
+; a in
+	
+	ld	d, a
+	and	%00000111
+	rrca \ rrca \ rrca
+	ld	l, a
+	ld	h, 64
+	mlt	hl
+	ld	a, h
+	rlca \ rlca \ rlca
+	bit	7, a
+	jr	z, $+3
+	inc	a
+	and	%00000111
+	ld	e, a
+
+	ld	a, d
+	and	%00011000
+	rlca \ rlca \ rlca
+	ld	l, a
+	ld	h, 255
+	mlt	hl
+	ld	a, h
+	rrca \ rrca \ rrca
+	bit	2, a	
+	and	%00011000
+	jr	z, $+3
+	add	a, 8
+	or	e
+	ld	e, a
+
+	ld	a, d
+	and	%11100000
+	ld	l, a
+	ld	h, 128
+	mlt	hl
+	ld	a, h
+	bit	4, a
+	and	%11100000
+	jr	z, $+3
+	add	a, 32
+	or	e
+	ret
+#endcomment
+
+ICXAAFillEdge:
+	ld	a, (de)
+	sub	(hl)
+	ret	z
+	jr	nc, ICXAASwap
+	ex	de, hl
+	neg
+ICXAASwap:
+	ld	(tmp), a
+
+; hl < de
+	ld	a, (hl)
+	inc	hl
+	ld	bc, (hl)
+
+	push	de
+	ld	l, a
+	ld	h, 160
+	mlt	hl
 	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	add	hl, bc
+	ld	de, (IFramebuffer)
 	add	hl, de
-	ld	(ix+0), hl
-	ld	hl, (ix+3)
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	ex	de, hl
+	pop	hl
+	push	de
+
+	inc	hl
+	ld	hl, (hl)
+; hl = x1, bc=x0
+	ld	a, $23
+	or	a, a
+	sbc	hl, bc
+	jr	nc, ICXAAEdge
+	or	a, $08
+; edge goes to left
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+ICXAAEdge:	
+; hl=abs(dx)
+tmp=$+1
+	ld	bc, $000000
+	or	a, a
+	sbc	hl, bc
+	add	hl, bc
+; c=dx<dy
+	pop	de
+	jp	c, ICXAAVerticalEdge
+ICXAAHorizontalEdge:
+; hl = abs(dx), a=code, bc=deltaY, de=framebufferadresse
+; y=deltaY*16384/abs(deltaX)
+; x=16384
+	ld	(code0), a
+	push	de
+	push	hl
+	ex	de, hl
+	ld	ix, ICXAA_TABLE
+	add	ix, de
+	add	ix, de
+	add	ix, de
+	ld	e, (ix+2)
+	ld	d, c
+	mlt	de
+	ex	de, hl
+	slhl
+	ld	e, (ix+1)
+	ld	d, c
+	mlt	de
 	add	hl, de
-	ld	(ix+3), hl
-	ld	hl, (ix+6)
-	add	hl, hl
-	add	hl, hl
-	add	hl, hl
+	ld	e, (ix+0)
+	ld	d, c
+	mlt	de
+	ld	e, d
+	ld	d, 0
 	add	hl, de
-	ld	(ix+6), hl
-	lea	ix, ix+16
+code0=$+1
+	ld	a, $00
+	and	$08
+	jp	z, ICXAARasterHR
+ICXAARasterHL:
+	pop	bc
+	ld	a, (IRasterRBG8)
+	ld	(ICH2), a
+	ld	(ICH3), a
+	ld	(ICXAADeltaY1), hl
+	pop	hl
+;	dec	hl
+;	dec	hl
+;	ld	ix, -16384
+	ld	ix, -8192
+ICXAARasterEdge4:
+	push	bc
+ICXAADeltaY1=$+1
+	ld	bc, $000000
+	add	ix, bc
+	ld	bc, 320
+	jr	nc, +_
+	add	hl, bc
+	ld	de, -16384
+	add	ix, de
+	or	a, a
+_:
+	sbc	hl, bc
+ICH2=$+1
+	ld	c, $FF
+	ld	a, (hl)
+	cp	c
+	jp	z, eeee1
+	ld	a, ixh
+	neg
+	fneg	a
+	flrp	(hl),c,a
+	ld	(hl), a
+eeee1:
+	ld	bc, 320
+	add	hl, bc
+ICH3=$+1
+	ld	c, $FF
+	ld	a, (hl)
+	cp	c
+	jp	z, eee1
+
+	ld	a, ixh
+	neg
+	flrp	(hl), c,a
+	ld	(hl), a
+eee1:
+		
+	dec	hl
+
+	pop	bc
 	dec	bc
 	ld	a, b
 	or	c
-	jr	nz, _ILoadingLoop
+	jp	nz, ICXAARasterEdge4
 	ret
 
-IProject:	
-; read = 128
-	ld	hl, (IPositionY)
-	ld	bc, (IPositionZ)	
-	ld	a, (IPositionY+2)
-	rlca
-	jr	nc, _iskip
+ICXAARasterHR:
+	pop	bc
+	ld	a, (IRasterRBG8)
+	ld	(ICH0), a
+	ld	(ICH1), a
+	ld	(ICXAADeltaY0), hl
+;	ld	ix, -16384
+	ld	ix, -8192
+	pop	hl
+ICXAARasterEdge3:
+	push	bc
+ICXAADeltaY0=$+1
+	ld	bc, $000000
+	add	ix, bc
+	ld	bc, 320
+	jr	nc, +_
+	add	hl, bc
+	ld	de, -16384
+	add	ix, de
 	or	a, a
-	ex	de, hl
-	sbc	hl, hl
-	sbc	hl, de
-_iskip:
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ adc a,a
-;	add	hl, hl \ sbc hl, bc
-	cpl
-	jr	c, _askp
+_:
+	sbc	hl, bc
+ICH0=$+1
+	ld	c, $FF
+	ld	a, (hl)
+	cp	c
+	jp	z, eeee
+	ld	a, ixh
 	neg
-_askp:
-	add	a, 120
-	ld	e, a
-_end:
-	ld	hl, (IPositionX)
-	ld	a, (IPositionX+2)
-	rlca
-	jr	nc, _iskip2
+	fneg	a
+	flrp	(hl),c,a
+	ld	(hl), a
+eeee:
+	ld	bc, 320
+	add	hl, bc
+ICH1=$+1
+	ld	c, $FF
+	ld	a, (hl)
+	cp	c
+	jp	z, eee
+
+	ld	a, ixh
+	neg
+	flrp	(hl), c,a
+	ld	(hl), a
+eee:
+		
+	inc	hl
+
+	pop	bc
+	dec	bc
+	ld	a, b
+	or	c
+	jp	nz, ICXAARasterEdge3
+	ret
+
+ICXAAVerticalEdge:
+; hl = abs(dx), a=code, bc=deltaY, de=framebufferadresse
+	ld	(code), a
+
+	ld	ix, ICXAA_TABLE
+	add	ix, bc
+	add	ix, bc
+	add	ix, bc
+; hl = 16384*256/deltaY
+; x=abs(deltaX)*16384/deltaY
+; Do L(8)*DE (24)/256
+; = L*E/256+L*D+L*DEU*256
 	push	de
-	or	a, a
+	ld	a, l
+	ld	h, (ix+2)
+	mlt	hl
+	slhl
 	ex	de, hl
-	sbc	hl, hl
-	sbc	hl, de
-	pop	de
-_iskip2:
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
-	add hl,hl \ sbc hl,bc \ adc a,a
-	cpl
-	jr	c, other2
-;	add	hl, hl \ sbc hl, bc
-	sbc	hl, hl
-;	inc	hl
-;	add	a, l
 	ld	l, a
-	ld	c, e
-	ld	de, 160
+	ld	h, (ix+1)
+	mlt	hl
 	add	hl, de
-	ld	e, c
-	ret
-other2:
-	or	a, a
-	sbc	hl, hl
-	ld	l, a
-	ld	c, e
-	ld	de, 160
 	ex	de, hl
-	sbc	hl, de
-	ld	e, c
+	ld	l, a
+	ld	h, (ix+0)
+	mlt	hl
+	ld	l, h
+	ld	h, 0
+	add	hl, de
+code=$+1
+	ld	a, $00
+	and	$08
+	jp	z, ICXAARasterVR
+
+ICXAARasterVL:
+	ld	a, (IRasterRBG8)
+	ld	(IC1), a
+	ld	(IC2), a
+	ld	(ICXAADeltaX0), hl
+	ld	ix, -8192
+	ld	a, c
+	pop	hl
+ICXAARasterEdge0:
+	push	af
+ICXAADeltaX0=$+1
+	ld	bc, $000000
+	add	ix, bc
+	jr	nc, ICXAANoSgnChange0
+	ld	bc, -16384
+	dec	hl
+	add	ix, bc
+ICXAANoSgnChange0:
+
+	dec	hl
+IC1=$+1
+	ld	c, 229
+	ld	a, (hl)
+	cp	c
+	jp	z, e5
+	ld	a, ixh
+	neg
+	flrp	(hl),c,a
+	ld	(hl), a
+e5:
+	inc	hl
+IC2=$+1
+	ld	c, 229
+	ld	a, (hl)
+	cp	c
+	jp	z, e4
+
+	ld	a, ixh
+	neg
+	fneg	a
+	flrp	(hl), c,a
+	ld	(hl), a
+e4:
+	ld	bc, 320
+	add	hl, bc
+
+	pop	af
+	dec	a
+	jp	nz, ICXAARasterEdge0
 	ret
 
 
+
+
+ICXAARasterVR:
+	ld	a, (IRasterRBG8)
+	ld	(IC3), a
+	ld	(IC4), a
+	ld	(ICXAADeltaX1), hl
+	ld	ix, -8192
+	ld	a, c
+	pop	hl
+ICXAARasterEdge1:
+	push	af
+ICXAADeltaX1=$+1
+	ld	bc, $000000
+	add	ix, bc
+	jr	nc, ICXAANoSgnChange1
+	ld	bc, -16384
+	inc	hl
+	add	ix, bc
+ICXAANoSgnChange1:
+
+	dec	hl
+IC3=$+1
+	ld	c, 229
+	ld	a, (hl)
+	cp	c
+	jp	z, e0
+	ld	a, ixh
+	neg
+	fneg	a
+	flrp	(hl),c,a
+	ld	(hl), a
+e0:
+	inc	hl
+IC4=$+1
+	ld	c, 229
+	ld	a, (hl)
+	cp	c
+	jp	z, e1
+
+	ld	a, ixh
+	neg
+	flrp	(hl), c,a
+	ld	(hl), a
+e1:
+	ld	bc, 320
+	add	hl, bc
+
+	pop	af
+	dec	a
+	jp	nz, ICXAARasterEdge1
+	ret
+
+ICXAA_TABLE:
+.dl 0
+.dl 4194304
+.dl 2097152
+.dl 1398101
+.dl 1048576
+.dl 838860
+.dl 699050
+.dl 599186
+.dl 524288
+.dl 466033
+.dl 419430
+.dl 381300
+.dl 349525
+.dl 322638
+.dl 299593
+.dl 279620
+.dl 262144
+.dl 246723
+.dl 233016
+.dl 220752
+.dl 209715
+.dl 199728
+.dl 190650
+.dl 182361
+.dl 174762
+.dl 167772
+.dl 161319
+.dl 155344
+.dl 149796
+.dl 144631
+.dl 139810
+.dl 135300
+.dl 131072
+.dl 127100
+.dl 123361
+.dl 119837
+.dl 116508
+.dl 113359
+.dl 110376
+.dl 107546
+.dl 104857
+.dl 102300
+.dl 99864
+.dl 97541
+.dl 95325
+.dl 93206
+.dl 91180
+.dl 89240
+.dl 87381
+.dl 85598
+.dl 83886
+.dl 82241
+.dl 80659
+.dl 79137
+.dl 77672
+.dl 76260
+.dl 74898
+.dl 73584
+.dl 72315
+.dl 71089
+.dl 69905
+.dl 68759
+.dl 67650
+.dl 66576
+.dl 65536
+.dl 64527
+.dl 63550
+.dl 62601
+.dl 61680
+.dl 60787
+.dl 59918
+.dl 59074
+.dl 58254
+.dl 57456
+.dl 56679
+.dl 55924
+.dl 55188
+.dl 54471
+.dl 53773
+.dl 53092
+.dl 52428
+.dl 51781
+.dl 51150
+.dl 50533
+.dl 49932
+.dl 49344
+.dl 48770
+.dl 48210
+.dl 47662
+.dl 47127
+.dl 46603
+.dl 46091
+.dl 45590
+.dl 45100
+.dl 44620
+.dl 44150
+.dl 43690
+.dl 43240
+.dl 42799
+.dl 42366
+.dl 41943
+.dl 41527
+.dl 41120
+.dl 40721
+.dl 40329
+.dl 39945
+.dl 39568
+.dl 39199
+.dl 38836
+.dl 38479
+.dl 38130
+.dl 37786
+.dl 37449
+.dl 37117
+.dl 36792
+.dl 36472
+.dl 36157
+.dl 35848
+.dl 35544
+.dl 35246
+.dl 34952
+.dl 34663
+.dl 34379
+.dl 34100
+.dl 33825
+.dl 33554
+.dl 33288
+.dl 33026
+.dl 32768
+.dl 32513
+.dl 32263
+.dl 32017
+.dl 31775
+.dl 31536
+.dl 31300
+.dl 31068
+.dl 30840
+.dl 30615
+.dl 30393
+.dl 30174
+.dl 29959
+.dl 29746
+.dl 29537
+.dl 29330
+.dl 29127
+.dl 28926
+.dl 28728
+.dl 28532
+.dl 28339
+.dl 28149
+.dl 27962
+.dl 27776
+.dl 27594
+.dl 27413
+.dl 27235
+.dl 27060
+.dl 26886
+.dl 26715
+.dl 26546
+.dl 26379
+.dl 26214
+.dl 26051
+.dl 25890
+.dl 25731
+.dl 25575
+.dl 25420
+.dl 25266
+.dl 25115
+.dl 24966
+.dl 24818
+.dl 24672
+.dl 24528
+.dl 24385
+.dl 24244
+.dl 24105
+.dl 23967
+.dl 23831
+.dl 23696
+.dl 23563
+.dl 23431
+.dl 23301
+.dl 23172
+.dl 23045
+.dl 22919
+.dl 22795
+.dl 22671
+.dl 22550
+.dl 22429
+.dl 22310
+.dl 22192
+.dl 22075
+.dl 21959
+.dl 21845
+.dl 21732
+.dl 21620
+.dl 21509
+.dl 21399
+.dl 21290
+.dl 21183
+.dl 21076
+.dl 20971
+.dl 20867
+.dl 20763
+.dl 20661
+.dl 20560
+.dl 20460
+.dl 20360
+.dl 20262
+.dl 20164
+.dl 20068
+.dl 19972
+.dl 19878
+.dl 19784
+.dl 19691
+.dl 19599
+.dl 19508
+.dl 19418
+.dl 19328
+.dl 19239
+.dl 19152
+.dl 19065
+.dl 18978
+.dl 18893
+.dl 18808
+.dl 18724
+.dl 18641
+.dl 18558
+.dl 18477
+.dl 18396
+.dl 18315
+.dl 18236
+.dl 18157
+.dl 18078
+.dl 18001
+.dl 17924
+.dl 17848
+.dl 17772
+.dl 17697
+.dl 17623
+.dl 17549
+.dl 17476
+.dl 17403
+.dl 17331
+.dl 17260
+.dl 17189
+.dl 17119
+.dl 17050
+.dl 16980
+.dl 16912
+.dl 16844
+.dl 16777
+.dl 16710
+.dl 16644
+.dl 16578
+.dl 16513
+.dl 16448
+.dl 16384
+.dl 16320
+.dl 16256
+.dl 16194
+.dl 16131
+.dl 16070
+.dl 16008
+.dl 15947
+.dl 15887
+.dl 15827
+.dl 15768
+.dl 15709
+.dl 15650
+.dl 15592
+.dl 15534
+.dl 15477
+.dl 15420
+.dl 15363
+.dl 15307
+.dl 15252
+.dl 15196
+.dl 15141
+.dl 15087
+.dl 15033
+.dl 14979
+.dl 14926
+.dl 14873
+.dl 14820
+.dl 14768
+.dl 14716
+.dl 14665
+.dl 14614
+.dl 14563
+.dl 14513
+.dl 14463
+.dl 14413
+.dl 14364
+.dl 14315
+.dl 14266
+.dl 14217
+.dl 14169
+.dl 14122
+.dl 14074
+.dl 14027
+.dl 13981
+.dl 13934
+.dl 13888
+.dl 13842
+.dl 13797
+.dl 13751
+.dl 13706
+.dl 13662
+.dl 13617
+.dl 13573
+.dl 13530
+.dl 13486
+.dl 13443
+.dl 13400
+.dl 13357
+.dl 13315
+.dl 13273
+.dl 13231
+.dl 13189
+.dl 13148
+.dl 13107
+
+IColor:
+.dl	0
+TEXTURE:
+;#include	"8bpp.inc"

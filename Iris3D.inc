@@ -1,200 +1,208 @@
+ ; ;
+ ; Iris-3D library, version 1.0
+ ;
+ ; Copyright (c) 2016, ''
+ ; All rights reserved.
+ ; 
+ ; Redistribution and use in source and binary forms, with or without
+ ; modification, are permitted provided that the following conditions are met:
+ ; 
+ ; ; Redistributions of source code must retain the above copyright notice, this
+ ; list of conditions and the following disclaimer.
+ ; 
+ ; ; Redistributions in binary form must reproduce the above copyright notice,
+ ; this list of conditions and the following disclaimer in the documentation
+ ; and/or other materials provided with the distribution.
+ ; 
+ ; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ ; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ ; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ ; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ ; FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ ; DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ ; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ ; CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ ; OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ ; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ; ;
+ 
+#ifndef __iris_h_
+#define __iris_h_
+
 .nolist
-#ifndef	__IGUARD__
-#define	__IGUARD__
-
-
-#define	IVERSION		$0100
-#define	IVERMAJOR		1
-#define	IVERMINOR		0
-#define	ICODENAME		"Colorfull"
-
-.echo	"Using Iris API 'Colorfull' version 1.0"
-
-#define	ITRUE			$01
-#define	IFALSE		$00
-#define	ISCREEN_W		320
-#define	ISCREEN_H		240
-
-; OS define and OS specific stuffs
-
-#define	__OS__FLAGS	$D00080	
-#ifndef	TI84PCE
-#include	"ti84pce.inc"
+#define OS__FLAGS           $D00080	
+#ifndef TI84PCE
+#include "ti84pce.inc"
 .nolist
 #endif
 
-; Math include
+; standard defines ;
 
-#define	IMATH_EXTEND	$FF0000
-#define	IMATH_FP6		$26	; integer 2 bits | fractionnal 6 bits
-#define	IMATH_FP12		$2C	; integer 2 bits | fractionnal 12 bits (double precision)
-#define	IMATH_FP8		$88	; Integer 8 bits | fractionnal 8 bits
-#define	IMATH_FP16		$F8	; integer 8 bits | fractionnal 16 bits (double precision)
-#define	IMHTAN_FP8		197
-#define	IMHTAN_FP6		45
-#define	IMHTAN_FP16	45889
-#define	IMPI_FP6		201
-#define	IMPI_FP8		804
-#define	IMPI_FP16		205887
+#define IRIS_VERSION        $10
+#define ITRUE               $01
+#define IFALSE              $00
 
-#define	IMATRIX_SIZE	(3*3)+(9*1)
-#define	IQUATERNION_SIZE	(3*4)
+; geometry ;
 
-#define	IQW	0
-#define	IQX	3
-#define	IQY	6
-#define	IQZ	9
+#define IPOINT              %00000001
+#define ILINE               %00000010
+#define ITRIANGLE           %00000011
+#define IQUADRI             %00000100
+#define ILINE_FAN           %10000010
+#define ITRIANGLE_FAN       %10000011
+#define IBACK_CULL          %00000001
 
-#define	__iwritetmp__	$D03603
+#define IVERTEX_BUFFER      $D09466
 
-#define	fma			__ifma_src_()
-;#define	lrp			__ilrp_src_()
-#define	pow			__ipow_src_()
-#define	slhl			__islhl_src_()
-#define	rcp			call	IReciprocal
-#define	xpd			call	IVectorCross
-#define	dp3			call	IVectorDot
-#define	.vertex		__ivertex_src_(
-#define	.normal		__inormal_src_(
+; mesh ;
 
-; math block register save flags
-#define	r0			0
-; jump prediction flag
-#define	p0			0
+#define IMESH_C1N3I9        13
+#define IMESH_C3N3I9        15
+#define IMESH_C3I9          12
+#define IMESH_C1I9          10
+#define IMESH_N3I9          12
+#define IMESH_I9            9
+#define IMESH_PACKED        $80
 
-; geometry include
+; maths ;
+#define IMATH_EXTEND        $FF0000
+#define IMPI_FP8            804
+#define IMPI_FP16           205887
+#define IMATRIX_SIZE        $12
+#define IQUATERNION_SIZE    $0C
+#define IQW                 $0
+#define IQX                 $3
+#define IQY                 $6
+#define IQZ                 $9
 
-#define	IPOINT		%00000001
-#define	ILINE			%00000010
-#define	ITRIANGLE		%00000011
-#define	IQUADRI		%00000100
-#define	ILINE_FAN		%10000010
-#define	ITRIANGLE_FAN	%10000011
-#define	IBACK_CULL		%00000001
+; RAM and VRAM ;
 
-#define	IMESH_CNI		13		; color,normal,index
-#define	IMESH_CI		10		; color,index
-#define	IMESH_NI		12		; normal,index
-#define	IMESH_I		9		; index
-#define	IMESH_PACKED	%10000000	; compressed data
-#define	IMESH_SORTING	%01000000	; z-sorting
+#define IFRAMEBUFFER_AUX0   $D40000	; first VRAM buffer
+#define IFRAMEBUFFER_AUX1   $D52C00	; second VRAM buffer
+#define IFRAMEBUFFER_SIZE   $12C00
+#define IVRAM               $E30800
+; 1024 bytes fast RAM (2TStates), routine reallocate ;
+#define IDOUBLEBUFFER       %00000001
+;#define IFramebuffer        $D03403
+#define IFramebuffer        $E30014
+#define ISCREEN_WIDTH       320
+#define ISCREEN_HEIGHT      240
 
-#define	IVERTEX_BUFFER	$D0EA1F	; 1024 slots
-#define	IZSORT_TABLE	$D10A1F	; 2048 slots
+; color LCD ;
 
+#define IBPP8               lcdBpp8   ; LCD 8 bpp mode bits
+#define IBPP16              lcdBpp16	; LCD 16 bpp mode bits
+#define ILCD_CTRL           mpLcdCtrl	; LCD control port
+#define ILCD_IMSC           $E3001C	; LCD Interrupt Mask Register
+#define ILCD_ICR            $E30028	; LCD Interrupt Clear/Set Register
+#define ILCD_ISR            $E30020	; LCD Interrupt Status Register
+#define ILCD_BUFFER         $E30010	; base adress of LCD
+#define ILCD_PALETTE        mpLcdPalette ; palette (r3g3b2)
+#define ILCD_VSYNC          %00000001	; vertical synchronisation
+#define IPALETTE_RBG        %00000001
+#define IRED_BITS           %11100000
+#define IGREEN_BITS         %00000111
+#define IBLUE_BITS          %00011000
 
-; raster system include
+; batch ;
 
-; Color LCD include
+#define IBATCH_DATA         IMAX_TRIANGLE*3+ITRIANGLE_LIST
+#define IBATCH_DATA_SIZE    3
+#define IBatchSize          $D03400
 
-#define	IBPP8			lcdBpp8	; LCD 8 bpp mode bits
-#define	IBPP16		lcdBpp16	; LCD 16 bpp mode bits
-#define	ILCD_CTRL		mpLcdCtrl	; LCD control port
-#define	ILCD_IMSC		$E3001C	; LCD Interrupt Mask Register
-#define	ILCD_ICR		$E30028	; LCD Interrupt Clear/Set Register
-#define	ILCD_RIS		$E30020	; LCD Interrupt Status Register
-#define	ILCD_BUFFER	$E30010	; base adress of LCD
-#define	ILCD_PALETTE	mpLcdPalette	; palette (r3g3b2)
-#define	ILCD_VSYNC		%00000001	; vertical synchronisation
-#define	IPALETTE_RBG	%00000001
-#define	IPALETTE_RGB	%00000011
-#define	IPALETTE_IRBG	%00000100
-#define	IPALETTE_IRGB	%00001100
+; depth test ;
 
+#define IDEPTH_TEST         $01
+#define IDEPTH_OFFSET       8388608
+#define IDEPTH_BITS         24
+#define IDEPTH_BUCKET       $D03200 ; 512 bytes of buckets
+#define IDEPTH_MIN          -8388608
+#define IDEPTH_MAX          8388608
 
-; target buffers, 76800 bytes each
+; texture ;
 
-#define	IVRAMF0		$D40000	; first VRAM buffer
-#define	IVRAMF1		$D52C00	; second VRAM buffer
+#define ITEXTURE
+#define ITEXTURE_FORMAT
 
-; Structure/data include
+; limits ;
 
-#define	IPositionX		$D03603
-#define	IPositionY		$D03606
-#define	IPositionZ		$D03609
+#define IMAX_TRIANGLE       4096
+#define IMAX_VERTEX         2048
+#define IMAX_VRAM           1024
+#define IMAX_TEXTURE_SIZE   256
 
-#define	IBUFFER_ADRESS	$D03200
-#define	IPIPE_ADRESS	IBUFFER_ADRESS
-#define	IPipelineState	IPIPE_ADRESS
-#define	IVertexShader	IPIPE_ADRESS
-#define	IGeomShader	IPIPE_ADRESS + 4
-#define	IPixelShader	IPIPE_ADRESS + 8
-#define	IFramebuffer	IPIPE_ADRESS + 12
-#define	IPipelineFlags	IPIPE_ADRESS + 15
-; 16 bytes structure
+; static variables ;
 
-#define	IVRAM			$E30800
-; 1024 bytes fast RAM (2TStates), routine reallocate
+#define IPosition           $D03406
+#define IPositionX          $D03406
+#define IPositionY          $D03409
+#define IPositionZ          $D0340C
+#define ILayer              $D0340F
 
-; limits
+; functions ;
 
-#define	IMAX_PLANE		0
-#define	IMAX_POLYGONS	2048
-#define	IMAX_VERTEX	1024
-#define	IMAX_VRAM		1024
-
-; functions include
-
-; vectors
-#define	IUSE_FN_VECCROSS
-#define	IUSE_FN_VECDOT
-#define	IUSE_FN_VECNORMALIZE
-#define	IUSE_FN_VECLENGTH
-#define	IUSE_FN_VECAPPROXLENGTH
-#define	IUSE_FN_VECCOPY
-; quaternions
-#define	IUSE_FN_QUATLOADIDENTITY
-#define	IUSE_FN_QUATLOADROTATION
-#define	IUSE_FN_QUATMAGNITUDE
-#define	IUSE_FN_QUATMULT
-#define	IUSE_FN_QUATCONJUGATE
-#define	IUSE_FN_QUATNORMALIZE
-#define	IUSE_FN_QUATGETMATRIX
-; matrix
-#define	IUSE_FN_MATLOADIDENTITY
-#define	IUSE_FN_MATLOADROTATION
-#define	IUSE_FN_MATTRANSPOSE
-#define	IUSE_FN_MATMULT
-#define	IUSE_FN_VECTRANSFORM
-#define	IUSE_FN_VECPROJECT
-; colors
-#define	IUSE_FN_MIXR5G6B5
-#define	IUSE_FN_MIXR3G3B2
-
-; vertex model include
-
-#macro	__ivertex_src_(x,y,z)
-	.dw	x,y,z
-#endmacro
-
-; normal model include
-
-#macro	__inormal_src_(x,y,z)
-; include normal information
-	.db	x,y,z
-#endmacro
-
-; value absolute (compile-time)
-
-#macro	IAbs16(val)
-#if	val&$8000
-val=-val
+#ifdef  IRIS_CORE
+#define IRIS_CORE_depthsort
+#define IRIS_CORE_quatidentity
+#define IRIS_CORE_quatmlt
+#define IRIS_CORE_quatgetmatrix
+#define IRIS_CORE_quatrotaxis
+#define IRIS_CORE_matidentity
+#define IRIS_CORE_matmlt
+#define IRIS_CORE_rastertriangle
+#define IRIS_CORE_veccross
+#define IRIS_CORE_vecdot
+#define IRIS_CORE_veclength
+#define IRIS_CORE_vecnormalize
+#define IRIS_CORE_vecproject
+#define IRIS_CORE_vectransform
 #endif
-val
-#endmacro
 
-#macro	IAbs24(val)
-#if	val&$800000
-val=-val
+;#define	IRIS_EXT_color
+;#define	IRIS_EXT_quaternion
+;#define	IRIS_EXT_vector
+;#define	IRIS_EXT_ecaa
+
+#ifdef  IRIS_EXT_color
+#define IRIS_EXT_colormlt
+#define IRIS_EXT_colorscale
+#define IRIS_EXT_colormix
 #endif
-val
-#endmacro
 
-#macro	srf()
-	#define	r0	1
+#ifdef  IRIS_EXT_quaternion
+#define IRIS_EXT_quatloadrotation
+#define IRIS_EXT_quatmagnitude
+#define IRIS_EXT_quatconjugate
+#define IRIS_EXT_quatnormalize
+#define IRIS_EXT_quatdot
+#define IRIS_EXT_quatslerp
+#endif
+
+#ifdef  IRIS_EXT_vector
+#define IRIS_EXT_vecmlt
+#define IRIS_EXT_vecreflect
+#endif
+
+#define IRIS_DEBUG
+#ifdef  IRIS_DEBUG
+#define assert(cc) call IAbortProgram 
+#else
+#define assert(cc)
+#endif
+
+#define fma                  __ifma_src_()
+#define slhl                 __islhl_src_()
+#define .align               align(
+.addinstr  ld a,hlu 3BF133E5 4
+.addinstr  ld a,deu 3BF133D5 4
+#define r0 $0
+#define p0 $0
+
+#macro srf()
+   #define r0 1
 #endmacro
-#macro	crf()
-	#define	r0	eval(1-r0)
+#macro crf()
+   #define r0 eval(1-r0)
 #endmacro
 
 ; Fused multiply and add macro
@@ -204,8 +212,8 @@ val
 ; From 122 to 132 TStates on 4 wait-states RAM [122,125,129,132]
 ; From 096 to 101 TStates on 3 wait-states RAM [096,97,100,101]
 ; 31 Bytes
-#macro	__ifma_src_()
-#if	r0==0
+#macro __ifma_src_()
+#if  r0==0
 	ex	de, hl
 	ld	h, b
 	ld	l, a
@@ -254,7 +262,7 @@ val
 ; 72 TStates on 4 wait-states RAM
 ; 56 TStates on 3 wait-states RAM
 ; 16 Bytes
-#macro	__ilrp_src_()
+#macro  __ilrp_src_()
 	ld	l, a
 	ld	h, b
 	mlt	hl
@@ -276,7 +284,7 @@ val
 ; a:8bits
 ; Max 500 TStates on 4 wait-states RAM
 ; 9 Bytes
-#macro	__ipow_src_()
+#macro  __ipow_src_()
 	ld	b,a
 	inc	b			; assume no carry
 	sbc	hl, hl		; hl = 0
@@ -285,7 +293,7 @@ val
 	djnz	$-1
 #endmacro
 
-#macro	__islhl_src_()
+#macro  __islhl_src_()
 	add	hl, hl
 	add	hl, hl
 	add	hl, hl
@@ -296,17 +304,195 @@ val
 	add	hl, hl
 #endmacro
 
-#macro	__ircp_src_()
-	call	IReciprocal
+#macro align(bound)
+	.fill bound-($%bound)
 #endmacro
+#macro  __flrp__(src1,src2,alpha)
+	push	hl
+	ld	b, (hl)
+; c is good
+	ld	e, a
+; e is good
+	ld	l, e
+	ld	a, b
+	and	IGREEN_BITS
+	ld	h, a
+	mlt	hl
+	ld	a, c
+	and	IGREEN_BITS
+	ld	d, a
+	ld	a, e
+	fneg	a
+	ld	e, a
+	mlt	de
+	add	hl, de
+	add	hl, hl
+	add	hl, hl
+	ld	l, a
+	ld	e, a
 
-#macro align(boundary)
-	.fill boundary-($%boundary)
+	ld	a, h
+	and	IGREEN_BITS
+;	ld	MB, a
+	.db	$ED,$6D
+
+	ld	a, c
+	and	IBLUE_BITS
+	ld	h, a
+	mlt	hl
+	ld	a, b
+	and	IBLUE_BITS
+	ld	d, a
+	ld	a, e
+	fneg	a
+	ld	e, a
+	mlt	de
+	add	hl, de
+	add	hl, hl
+	add	hl, hl
+	ld	l, a
+	ld	e, a
+	ld	a, h
+	and	IBLUE_BITS
+	ld	h, a
+	ld	a, MB
+#define	IMAGIC_COMPENSATE0	$27
+;;	sub	IMAGIC_COMPENSATE0
+	or	h
+;	ld	MB, a
+	.db	$ED,$6D
+
+	ld	a, b
+	and	IRED_BITS
+	ld	h, a
+	mlt	hl
+	ld	a, c
+	and	IRED_BITS
+	ld	d, a
+	ld	a, e
+	fneg	a
+	ld	e, a
+	mlt	de
+	add	hl, de
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	and	IRED_BITS
+	ld	h, a
+	ld	a, MB
+#define	ICOMPENSATE_REGR1	$25
+;;	sub	ICOMPENSATE_REGR1
+	or	h
+	pop	hl
+
+#comment
+	push	hl
+	ld	b, (hl)
+; b,c,e
+	ld	e, a
+	ld	a, b
+	and	IGREEN_BITS	
+	ld	h, a
+	ld	a, c
+	and	IGREEN_BITS
+	sub	h
+	jr	nc, $+4
+	cpl
+	inc	a
+	ld	h, a
+	ld	l, e
+; convert flag
+	sbc	a, a
+	or	a, a
+; c=nz, nc=z
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	jr	z, $+4
+	neg	
+	ld	h, a
+	ld	a, b
+	and	IGREEN_BITS
+	add	a, h
+	ld	d, a
+; 138
+
+	ld	a, b
+	and	IBLUE_BITS
+	ld	h, a
+	ld	a, c
+	and	IBLUE_BITS
+	sub	h
+	jr	nc, $+4
+	cpl
+	inc	a
+	ld	h, a
+	ld	l, e
+	mlt	hl
+	rl	h	; push down carry flag	
+	add	hl, hl
+	ld	a, h
+	and	IBLUE_BITS
+	bit	1, h
+	jr	z, $+4
+	neg
+	ld	h, a
+	ld	a, b
+	and	IBLUE_BITS
+	add	a, h
+	or	d
+	ld	d, a
+; 280
+
+	ld	a, b
+	and	IRED_BITS
+	ld	h, a
+	ld	a, c
+	and	IRED_BITS
+	sub	h
+	jr	nc, $+4
+	cpl
+	inc	a ; neg, put different flag output
+	ld	h, a
+	ld	l, e
+	mlt	hl
+	rl	h ; push down carry flag
+	ld	a, h
+	and	IRED_BITS>>1
+	bit	0, h
+	jr	z, $+4
+	neg
+	ld	h, a
+	ld	a, b
+	rra
+	and	IRED_BITS>>1
+	add	a, h
+	sla	a
+	or	d
+
+	pop	hl
+; 452 TStates
+#endcomment
 #endmacro
-#define .align align(
+#define	flrp	__flrp__(
+#macro	__fmlt__(x)
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+#endmacro
+#define	fmlt	__fmlt__(
+.addinstr	fneg a 41C62F 3 NOP 1
+.addinstr  ld a,(hl+) 000000 3 NOP 1
+.addinstr  ld (hl+),a 000000 3 NOP 1
 
-.addinstr ld a,hlu 3BF133E5 4
-.addinstr ld a,deu 3BF133D5 4
+.list
+
+; global compilation variable ;
+
+#define IRIS_fine_pxlcoverage ; slower but better coverage calculation at pxl level
+; about 200 TStates slower setup + more writed pxl
+;#define IRIS_fast_AAx2       ; a fast x2 AA at triangle edge (one color gradient)
 
 #endif
-.list

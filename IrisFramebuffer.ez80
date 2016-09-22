@@ -1,5 +1,3 @@
-#if	IVERSION==$0100
-
 ; code start - framebuffer functions
 
 IResetPalette:
@@ -66,14 +64,39 @@ ISetPalette:
 	ld	bc, 512
 	ldir
 	ret
-IScreenReset:
-	ld	hl, $D40000
-	ld	(hl), c
-	ld	de, $D40001
-	ld	bc, 153599
-	ldir
-	ret
 IFastClear:
+	di
+	or	a, a
+	sbc	hl, hl
+	add	hl, sp
+	ex	de, hl
+	
+	ld	sp, (IFramebuffer)
+	ld	hl, 76800
+	add	hl, sp
+	ld	sp, hl	
+
+	ld	bc, 3200
+	ld	hl, 0
+
+_ClearLoop:
+	push	hl
+	push	hl
+	push	hl
+	push	hl
+	push	hl
+	push	hl
+	push	hl
+	push	hl
+	dec	bc
+	ld	a, b
+	or	c
+	jr	nz, _ClearLoop
+	
+	ex	de, hl
+	ld	sp, hl
+	ret
+
 IClear:
 ; reset framebuffer with color
 ; input : c
@@ -81,6 +104,7 @@ IClear:
 ; destroyed : all except ix,iy
 	ld	hl, (IFramebuffer)
 	ld	(hl), c
+IClearEntry:
 	ex	de, hl
 	or	a, a
 	sbc	hl, hl
@@ -101,7 +125,7 @@ IFlush:
 	ld	(de), a
 	ld	(ILCD_BUFFER), hl
 _IWaitLoop:
-	ld	a, (ILCD_RIS)
+	ld	a, (ILCD_ISR)
 	and	%00000100
 	jr	z, _IWaitLoop
 ;	ld	(IWaitTime), bc
@@ -123,6 +147,5 @@ ISwap:
 	ld	(IFramebuffer), de
 	ld	(ILCD_BUFFER), hl
 	ret
-#else
-	.echo	"IrisFramebuffer.ez80 version doesn't correspond to Iris3D.inc version"
-#endif
+IReadPixels:
+	ret

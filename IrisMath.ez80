@@ -1,3 +1,4 @@
+#comment
 IReciprocal:
 	push	hl
 	pop	bc
@@ -45,6 +46,7 @@ IReciprocal:
 	ld	e, a
 	ex	de, hl
 	ret
+#endcomment
 ISquareRoot:
     xor a \ ld b,l \ push bc \ ld b,a \ ld d,a \ ld c,a \ ld l,a \ ld e,a
 ;Iteration 1
@@ -116,7 +118,7 @@ _:	ld (Div_SMC),a
 Div_SMC:	or a,a
 	rl e \ ret
 
-IFPMul:
+IFPMlt:
 ; HLxDE/256 [16bits]
 ; (HxD*256+LxD+ExH+LxE/256)
 	ld	b, h
@@ -189,157 +191,6 @@ IFPSin:
 	ld	h, a
 	ld	l, c
 	ret
-IComputeDepthList:
-	lea	ix, ix+7
-	ld	a, c
-	dec	bc
-	inc	b
-	ld	c, a
-	ld	a, b
-	ld	b, c
-_IDepthLoop:
-
-	ld	iy, (ix+0)
-	ld	de, (iy+4)
-	ex	de, hl
-
-	ld	iy, (ix+3)
-	ld	de, (iy+4)
-	add	hl, de
-
-	ld	iy, (ix+6)
-	ld	de, (iy+4)
-	add	hl, de
-	
-	ld	(ix-7), hl
-	lea	ix, ix+16
-	djnz	_IDepthLoop
-	dec	a
-	jr	nz, _IDepthLoop
-	ret
-IInsertionSort:
-#comment
-for (i = 1; i < arr.length; i++) {
-    newValue = arr[i]; ; compute the Z average distance.
-    j = i;
-    while (j > 0 && arr[j - 1] > newValue) {
-        arr[j] = arr[j - 1];
-        j--;
-    }
-arr[j] = newValue; 
-#endcomment
-; array = ix, each element are (9id+1col+3key)=13 bytes in size
-; ix =array, bc=length
-; loop calculation
-	dec	bc
-	ld	a, c
-	dec	bc
-	inc	b
-; bound check smc
-	lea	de, ix-15
-	sbc	hl, hl
-	sbc	hl, de
-	ld	(ISort_SMC), hl
-_ISortOuterLoop:
-	push	bc
-_ISortInnerLoop:
-	lea	ix, ix+16
-	ld	de, (ix+0) ;de
-	lea	iy, ix+0
-ISort_SMC=$+1
-	ld	bc, $000000
-_ISortWhile:
-	lea	iy, iy-16
-	ld	hl, (iy+0)
-	or	a, a
-	sbc	hl, de
-	jr	nc, _ISortQuit
-	lea	hl, iy
-	add	hl, bc
-	jr	c, _ISortWhile
-_ISortQuit:
-	lea	hl, ix+0
-	lea	de, iy+16
-	sbc	hl, de
-	jr	z, _ISortNoCopy
-	push	hl
-	add	hl, de
-	ld	de, ITmpBlock
-	ld	bc, 16
-	ldir
-	pop	bc
-	lea	hl, ix-1
-	lea	de, ix+15
-	lddr
-	ex	de, hl
-	inc	de
-	ld	hl, ITmpBlock
-	ld	c, 16
-	ldir
-_ISortNoCopy:
-	dec	a
-	jr	nz, _ISortInnerLoop
-	pop	bc
-	djnz	_ISortOuterLoop
-	ret
-ITmpBlock:
-	.dl	0,0,0,0,0,0
-
-#comment
-; array = ix, each element are (9id+1col+3key)=13 bytes in size
-; ix =array, bc=length
-	lea	de, ix+1
-	or	a, a
-	sbc	hl, hl
-	sbc	hl, de
-	ld	(ISort_SMC), hl
-	dec	bc
-_ISortLoop:
-	lea	ix, ix+13
-	dec	bc
-	push	bc
-	ld	de, ITmpBlock
-	lea	hl, ix+0
-	ld	bc, 13
-	ldir
-	ld	hl, (ix+0)
-	lea	iy, ix+0
-	halt
-_ISortWhile:
-	ld	de, (iy-13)
-	or	a, a
-	sbc	hl, de
-	jr	c, _ISortQuit
-	add	hl, de
-	push	iy
-ISort_SMC=$+1
-	ld	bc, $000000
-	add	iy, bc
-	pop	iy
-	jr	nc, _ISortQuit
-	push	hl
-	lea	hl, iy-13
-	lea	de, iy
-	lea	iy, iy-13
-	ld	bc, 13
-	ldir
-	pop	hl
-	jr	_ISortWhile
-_ISortQuit:
-	lea	de, iy+0
-	ld	hl, ITmpBlock
-	ld	bc, 13
-	ldir
-
-	pop	bc
-	ld	a, b
-	or	c
-	jr	nz, _ISortLoop
-	ret
-ITmpBlock:
-	.dl	0,0,0,0,0
-#endcomment
-
 
 
 

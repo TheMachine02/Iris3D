@@ -1,4 +1,91 @@
-IDrawPixel:
+#define	ITEXTURE_SIZE_V	180
+#define	ITEXTURE_SIZE_U	320
+
+ICopyTexImage2D:
+; x,y,w,h,src
+; de,a,hl,b,ix
+    ld	(ICopyTexSMCWidth), hl
+    ld	(ICopyTexSMCDeltaX), hl
+    ld	l, a
+    ld	a, b
+    ld	(ICopyTexSMCDeltaY), a
+    ld	h, 160
+    mlt	hl
+    add	hl, hl
+    add	hl, de
+    ld	de, (IFramebuffer)
+    add	hl, de
+    ex	de, hl
+; b = h, hl=src
+    lea	hl, ix+3
+;   ld	iy, ITEXTURE_SIZE_V
+    ld	iy, 0
+    ld	iyl, b
+ICopyTextureOuter:
+    push	bc
+    push	de
+    ld	bc, -ITEXTURE_SIZE_V
+    add	iy, bc
+    ld	c, iyh
+    rl	c
+    jr	nc, IInterpolateVSkip
+ICopyTexSMCDeltaY=$+1
+    ld	bc, $000000
+    ld	de, ITEXTURE_SIZE_U
+IInterpolateVLoop:
+    add	hl, de
+    add	iy, bc
+    jr	nc, IInterpolateVLoop
+IInterpolateVSkip:
+
+    pop	de
+    push	de
+    push	hl
+
+ICopyTexSMCWidth=$+1
+	ld	bc, $000000
+	ld	ix, 0
+	ld	ixl, c
+	ld	ixh, b
+ICopyTextureLine:
+	push	bc
+	ld	bc, -ITEXTURE_SIZE_U
+	add	ix, bc
+	ld	c, ixh
+	rl	c
+	jr	nc, IInterpolateUSkip
+ICopyTexSMCDeltaX=$+1
+	ld	bc, $000000
+IInterpolateULoop:
+	inc	hl
+	add	ix, bc
+	jr	nc, IInterpolateULoop
+IInterpolateUSkip:
+
+	ldi
+	dec	hl
+
+	pop	bc
+	dec	bc
+	ld	a, b
+	or	c
+	jr	nz, ICopyTextureLine
+
+	pop	de
+	pop	hl
+
+	ld	bc, 320
+	add	hl, bc
+	ex	de, hl
+	pop	bc
+	djnz	ICopyTextureOuter
+	ret
+
+IRasterPixel:
+	ld	e, (hl)
+	inc	hl
+	ld	hl, (hl)
+IRasterPixelEntry:
 ; input : hl :x , [d]e : y, c : color
 ; output : none
 ; destroyed : hl, de
@@ -11,313 +98,543 @@ IDrawPixel:
 	add	hl, de	; [4]
 	ld	(hl), c	; [6]
 	ret			; [x]
-IDrawLine:
+IRasterLine:
 	ret
 
-IDrawTriangle:
-; (ix list of 2d coordinate)
-#define	x0	0
-#define	y0	3
-#define	x1	4
-#define	y1	7
-#define	x2	8
-#define	y2	11
+#define IRIS_CORE_rastertriangle
+#ifdef  IRIS_CORE_rastertriangle
+;old=eval($)
+IRasterTriangle:
+;.org	IVRAM
+    ld	(IRasterRBG8), a
 
-	ld	hl, (ix+0)
-	ld	de, (ix+3)
-	ld	bc, (ix+6)
+    ld	a, (de)
+    sub	a, (hl)
+    jr	c, IRasterSwap0
+    ex	de, hl
+IRasterSwap0:
+    ld	a, (bc)
+    sub	a, (hl)
+    jr	nc, IRasterSwap1
+    push	hl
+    or	a, a
+    sbc	hl, hl
+    add	hl, bc
+    pop	bc
+IRasterSwap1:
+    ld	a, (de)
+    sub	a, (hl)
+    jr	nc, IRasterSwap2
+    ex	de, hl
+IRasterSwap2:
 
-	ld	a, (de)
-	sub	a, (hl)
-	jr	c, _INoSwap1
-	ex	de, hl
-_INoSwap1:
-	ld	a, (bc)
-	sub	a, (hl)
-	jr	nc, _INoSwap2
-	push	hl
-	or	a, a
-	sbc	hl, hl
+    ld	a, (bc)
+    sub	(hl)
+    ret	z
+#ifdef  IRIS_fine_pxlcoverage
+    ld	ix, $FF0000
+    ld	iy, $FF0000
+    ld	ixl, a
+    neg
+    ld	(IDeltaY0), a
+; x1-x0
+    ld	a, (de)
+    ld	(IValueY1), a
+    sub	(hl)
+    push	af
+    ld	iyl, a
+    neg
+    ld	(IDeltaY1), a
+#else
+    ld	ix, $FFFFFF
+    ld	iy, $FFFFFF
+    neg
+    ld	(IDeltaY0), a
+    ld	ixl, a
+; x1-x0
+    ld	a, (de)
+    ld	(IValueY1), a
+    sub	(hl)
+    push	af
+    neg
+    ld	(IDeltaY1), a
+    ld	iyl, a
+#endif
+    ld	a, (hl)
+    push	af
+
+    push	bc
+    inc	hl
+    ld	bc, (hl)
+    ex	de, hl
+    inc	hl
+    ld	hl, (hl)
+    ld	(IValueX1), hl
+    jr	z, IRasterNoEdgeWrite
+    ld	a, $13
+    or	a, a
+    sbc	hl, bc
+    jr	nc, IRasterEdge1
+#ifndef IRIS_fine_pxlcoverage
+    ld	iyl, $FF
+#endif
+    or	a, $08
+    ex	de, hl
+    sbc	hl, hl
+    sbc	hl, de
+IRasterEdge1:
+    ld	(IDeltaX1), hl
+    ld	(ISMC_Code1), a
+
+#ifdef  IRIS_fine_pxlcoverage
+    lea	de, iy+0
+    add	hl, de
+    ex	de, hl
+    sbc	hl, hl
+    ccf
+    sbc	hl, de
+    sra	h
+    rr	l
+    ex	de, hl
+    ld	iyh, d
+    ld	iyl, e
+#endif
+
+IRasterNoEdgeWrite:
+    pop	hl
+
+; x2-x0
+    inc	hl
+    ld	hl, (hl)
+    ld	(IValueX2), hl
+    ld	a, $23			; inc hl
+    or	a, a
+    sbc	hl, bc
+; if x0>x1, edge goes to left
+    jr	nc, IRasterEdge0
+#ifndef IRIS_fine_pxlcoverage
+    ld	ixl, $FF
+#endif
+    or	a, $08			; dec hl
+; edge goes to left
+    ex	de, hl
+    sbc	hl, hl
+    sbc	hl, de
+IRasterEdge0:
+    ld	(IDeltaX0), hl
+    ld	(ISMC_Code0), a
+
+#ifdef  IRIS_fine_pxlcoverage
+    lea	de, ix+0
+    add	hl, de
+    ex	de, hl
+    sbc	hl, hl
+    ccf
+    sbc	hl, de
+    sra	h
+    rr	l
+    ex	de, hl
+    ld	ixh, d
+    ld	ixl, e
+
+#endif
+
+	pop	hl
+	ld	l, 160
+	mlt	hl
+	add	hl, hl
 	add	hl, bc
-	pop	bc
-_INoSwap2:
-	ld	a, (de)
-	sub	a, (hl)
-	jr	c, _INoSwap3
-	ex	de, hl
-_INoSwap3:
-	ld	ix, ITmpAdress
-	ld	(ix+0), de
-	ld	(ix+3), hl
-	ld	(ix+6), bc
-	ex	de, hl
-
-	ld	a, (bc)
-	sub	a, (hl)
-	ld	(IDeltaY0), a
-	xor	a, a
-
-; changing edges are y0-y1 and y1-y2
-	ld	iy, (ix+6)
-	ld	de, (iy+1)
-	inc	hl
-	ld	hl, (hl)
-	xor	a, $23			; inc hl
-	sbc	hl, de
-; if x0>x1, edge goes to left
-	jr	c, _IEdge0
-	or	a, $08			; dec hl
-; edge goes to left
-	ex	de, hl
-	sbc	hl, hl
-	sbc	hl, de
-_IEdge0:	
-	ld	(IDeltaX0), hl
-	ld	(ISMC_Code0), a
-; block 0 is the constant block
-
-;	ld	a, $EB
-;	ld	(ISMC_Ex), a
-;	xor	a, a
-;	ld	(ISMC_Nop), a
-
-
-	xor	a, a
-;	ld	hl, (ix+3)
-;	inc	hl
-;	ld	de, (hl)
-	ld	iy, (ix+3)
-	ld	de, (iy+1)
-	ld	hl, (ix+0)
-	inc	hl
-	ld	hl, (hl)
-	xor	a, $13			; inc de
-	sbc	hl, de
-; if x0>x1, edge goes to left
-	jr	c, _IEdge1
-	or	a, $08			; dec de
-; edge goes to left
-	ex	de, hl
-	sbc	hl, hl
-	sbc	hl, de
-_IEdge1:	
-	ld	(IDeltaX1), hl
-	ld	(ISMC_Code1), a
-;	ld	hl, (ix+3)
-;	ld	a, (hl)
-	ld	a, (iy+0)
-	ld	hl, (ix+0)
-	sub	a, (hl)
-	ld	(IDeltaY1), a
-	ld	iy, 0
-	ld	iyl, a
-; block 1 is the variable block
-
-	ld	e, (hl)
-	ld	d, 160
-	mlt	de
-	inc	hl
-	ld	hl, (hl)
-	add	hl, de
-	add	hl, de
 	ld	de, (IFramebuffer)
 	add	hl, de
 	ex	de, hl
 	sbc	hl, hl
 	add	hl, de
 
-	ld	ix, (IDeltaY0)
+	pop	af
+	call	nz, IRasterTriangleInner
 
-	or	a, a
-	call	nz, __ITriangleInner__
-
-;;;;;;;;;;;;;;;;;;;;;;
-;	ret
-;;;;;;;;;;;;;;;;;;;;;;
+	ld	a, (IDeltaY0) ; y2-y0
+	ld	c, a
+	ld	a, (IDeltaY1)
+	sub	c
+	ret	z
+	push	af
+#ifdef IRIS_fine_pxlcoverage
+	ld	iyl, a
+	neg
+#else
+	neg
+	ld	iyl, a
+#endif
+	ld	(IDeltaY1), a
 
 	push	hl
-	ld	iy, ITmpAdress
-	ld	hl, (iy+6)
-	ld	a, (hl)
-	inc	hl
-	ld	de, (hl)
-	ld	hl, (iy+3)
-	sub	(hl)
-	ld	(IDeltaY1), a
-	ld	c, a
-	inc	hl
-	ld	hl, (hl)
-	sbc	hl, de
+
+IValueX2=$+1
+	ld	hl, $000000
+IValueX1=$+1
+	ld	bc, $000000
+	or	a, a
+	sbc	hl, bc
 	ld	a, $13
 ; if x0>x1, edge goes to left
-	jr	c, _IEdgeC1
-; edge goes to left
-	ld	a, $1B			; dec hl
+	jr	nc, IRasterEdge2
+#ifndef IRIS_fine_pxlcoverage
+	ld	iyl, $FF
+#endif
+	or	a, $08
 	ex	de, hl
 	sbc	hl, hl
 	sbc	hl, de
-_IEdgeC1:	
+IRasterEdge2:
 	ld	(IDeltaX1), hl
 	ld	(ISMC_Code1), a
-	ld	hl, (iy+3)
-	ld	iy, 0
-	ld	a, c
-	ld	iyl, a
-	ld	e, (hl)
-	ld	d, 160
-	mlt	de
-	inc	hl
-	ld	hl, (hl)
+
+#ifdef  IRIS_fine_pxlcoverage
+	lea	de, iy+0
+	ld	d, $00 ;compensate due to previous looping
 	add	hl, de
-	add	hl, de
+	ex	de, hl
+	sbc	hl, hl	
+	sbc	hl, de
+	dec	hl
+	sra	h
+	rr	l
+	ex	de, hl
+	ld	iyh, d
+	ld	iyl, e
+#endif
+
+IValueY1=$+1
+	ld	l, $00
+	ld	h, 160
+	mlt	hl
+	add	hl, hl
+	add	hl, bc
 	ld	de, (IFramebuffer)
 	add	hl, de
 	ex	de, hl
 	pop	hl
-	or	a, a
-	ret	z
-__ITriangleInner__:
+
+;	ld	a, (IDeltaY1)
+;	neg
+	pop	af
+IRasterTriangleInner:
 IDeltaX0=$+1
 	ld	bc, $000000
 	add	ix, bc
-	ld	c, ixh
-	rl	c
-	jr	nc, __INoSignChange0__
+	jr	nc, $+11
 IDeltaY0=$+1
-	ld	bc, $000000
-__IBlockRestoreLoop0__:
+	ld	bc, $FFFF00
 ISMC_Code0=$
 	nop
 	add	ix, bc
-	jr	nc, __IBlockRestoreLoop0__
-__INoSignChange0__:
+	jr	c, $-3
+
 IDeltaX1=$+1
 	ld	bc, $000000
 	add	iy, bc
-	ld	c, iyh
-	rl	c
-	jr	nc, __INoSignChange1__
+	jr	nc, $+13
 IDeltaY1=$+1
-	ld	bc, $000000
-__IBlockRestoreLoop1__:
+	ld	bc, $FFFF00
 ISMC_Code1=$
 	nop
-	add	iy, bc	
-	jr	nc, __IBlockRestoreLoop1__
-	or	a, a
-__INoSignChange1__:
+	add	iy, bc
+	jr	c, $-3
+	inc.s	bc ;reset bcu set by restoring ld bc,$FFxxxx
+
 ; hl = adress1, de = adress2
-	push	hl
 	sbc	hl, de
-	jr	z, _ISpecial
-	push	de
-	jr	nc, _IDrawLine
-	add	hl, de
-	ex	de, hl
-	or	a, a
-	sbc	hl, de
-_IDrawLine:
-; de= right point, hl = size
-	inc.s	bc	; hack to clear bcu faster than ld bc,0
+	jr	c, IRasterInverted
+	jr	z, IRasterNoPixel
 	ld	b, h
 	ld	c, l
+
+	ld	hl, IRasterRBG8
+	ldi
+	jp	po, IRasterContinue
+	scf
 	sbc	hl, hl
 	add	hl, de
-IColor=$+1
-	ld	(hl), 255
-	inc	de
+	push	hl
 	ldir
-	pop	de
-_IEndFill:
-	pop	hl
-	ld	bc, 320
-	add	hl, bc
-	ex	de, hl
-	add	hl, bc
-	ex	de, hl
-	dec	a
-	jr	nz, __ITriangleInner__
-	ret
-_ISpecial:
-	ld	c, a
-	ld	a, (IColor)
-	ld	(de), a
-	ld	a, c
-	jr	_IEndFill
-ITmpAdress:
-	.dl	0,0,0
-
-#comment
-	push	hl
-	push	de
-	sbc	hl, de
-	jr	nc, _ISwap
-	add	hl, de
-	ex	de, hl
-	or	a, a
-	sbc	hl, de
-_ISwap:
-	inc.s	bc
-	ld	b, h
-	ld	c, l
-	add	hl, de
-IColor=$+1
-	ld	(hl), $00
-	jr	z, _ILineNull
-	ex	de, hl
-	sbc	hl, hl
-	add	hl, de
-	dec	de
-	lddr
-_ILineNull:
-	pop	de
 	pop	hl
 
-
-
-ISMC_Nop=$
-	nop
-	sbc	hl, de
-	jr	c, _ISwap
-_IEntryPoint:
-	inc.s	bc
-	ld	b, h
-	ld	c, l
-	add	hl, de
-IColor=$+1
-	ld	(hl), $00
-	jr	z, _ILineNull
-	push	hl
-	ex	de, hl
-	sbc	hl, hl
-	add	hl, de
-	dec	de
-	lddr
-	inc	de
-	pop	hl
-_ILineNull:
 	ld	c, 64
 	inc	b
 	add	hl, bc
 	ex	de, hl
 	add	hl, bc
-ISMC_Ex=$
-	ex	de, hl
 	dec	a
-	jr	nz, __ITriangleInner__
+	jr	nz,IRasterTriangleInner
 	ret
-_ISwap:
-; 84 TStates overhead
-	ld	c, a
-	ld	a, $EB
-	ld	(ISMC_Nop), a
-	xor	a, a
-	ld	(ISMC_Ex), a
+IRasterContinue:
+	scf
+	sbc	hl, hl
+IRasterNoPixel:
+	add	hl, de
+	ld	bc, 320
+	add	hl, bc
+	ex	de, hl
+	add	hl, bc
+	dec	a
+	jr	nz,IRasterTriangleInner
+	ret
+IRasterInverted:
+	add	hl, de
+; hl --- de
+IRasterRBG8=$+1
+	ld	(hl), $00
+	ex	de, hl
+; carry is set
+	sbc	hl, de
+	ld	b, h
+	ld	c, l
+	add	hl, de
+	jr	z, IRasterSize1
+	push	de
+	sbc	hl, hl
+	add	hl, de
+	inc	de
+	ldir
+	pop	de
+IRasterSize1:
+	inc	hl
+
+	ld	c, 64
+	inc	b
+	add	hl, bc
+	ex	de, hl
+	add	hl, bc
+	dec	a
+	jr	nz, IRasterTriangleInner
+	ret
+;size=$-IVRAM
+;.org	old+size
+
+;IPixelWrited:
+;	.dl	0
+
+#endif
+
+#ifdef	IRIS_EXT_alphatriangle
+IRasterAlphaTriangle:
+	ld	a, (de)
+	sub	a, (hl)
+	jr	c, IRasterAlphaSwap0
+	ex	de, hl
+IRasterAlphaSwap0:
+	ld	a, (bc)
+	sub	a, (hl)
+	jr	nc, IRasterAlphaSwap1
+	push	hl
+	or	a, a
+	sbc	hl, hl
+	add	hl, bc
+	pop	bc
+IRasterAlphaSwap1:
+	ld	a, (de)
+	sub	a, (hl)
+	jr	nc, IRasterAlphaSwap2
+	ex	de, hl
+IRasterAlphaSwap2:
+
+	ld	a, (bc)
+	sub	(hl)
+	ret	z
+	cpl
+	ld	(IAlphaDeltaY0), a
+	ld	ix, $FFFFFF
+	ld	iy, $FFFFFF
+	ld	ixl, a
+; x1-x0
+	ld	a, (de)
+	ld	(IAlphaValueY1), a
+	sub	(hl)
+	cpl
+	ld	(IAlphaDeltaY1), a
+	ld	iyl, a
+
+	ld	a, (hl)
+	ld	iyh, a
+
+	push	bc
+	inc	hl
+	ld	bc, (hl)
+	ex	de, hl
+	inc	hl
+	ld	hl, (hl)
+	ld	(IAlphaValueX1), hl
+	jr	z, IRasterAlphaNoEdgeWrite
+	ld	a, $13
+	sbc	hl, bc
+	jr	nc, IRasterAlphaEdge1
+	ld	iyl, $FF
+	or	a, $08
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+IRasterAlphaEdge1:
+	ld	(IAlphaDeltaX1), hl
+	ld	(IAlphaSMC_Code1), a
+IRasterAlphaNoEdgeWrite:
+	pop	hl
+
+; x2-x0
+	inc	hl
+	ld	hl, (hl)
+	ld	(IAlphaValueX2), hl
+	ld	a, $23			; inc hl
+	or	a, a
+	sbc	hl, bc
+; if x0>x1, edge goes to left
+	jr	nc, _IAlphaEdge0
+	ld	ixl, $FF
+	or	a, $08			; dec hl
+; edge goes to left
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+_IAlphaEdge0:
+	ld	(IAlphaDeltaX0), hl
+	ld	(IAlphaSMC_Code0), a
+
+	ld	a, iyh
+	ld	iyh, $FF
+	ld	l, a
+	ld	h, 160
+	mlt	hl
+	add	hl, hl
+	add	hl, bc
+	ld	de, (IFramebuffer)
 	add	hl, de
 	ex	de, hl
+	sbc	hl, hl
+	add	hl, de
+
+	ld	a, (IAlphaDeltaY1)
+	cpl
+	or	a, a
+	call	nz, IRasterAlphaTriangleInner
+
+;;;;;;;;;;;;;;;;;;;;;;
+;	ret
+;;;;;;;;;;;;;;;;;;;;;;
+	ld	a, (IAlphaDeltaY0) ; y1-y0
+	ld	c, a
+	ld	a, (IAlphaDeltaY1)
+	sub	c
+	ret	z
+	cpl
+	ld	(IAlphaDeltaY1), a
+
+	ld	iyl, a
+
+	push	hl
+
+IAlphaValueX2=$+1
+	ld	hl, $000000
+IAlphaValueX1=$+1
+	ld	bc, $000000
+	sbc	hl, bc
+	ld	a, $13
+; if x0>x1, edge goes to left
+	jr	nc, IRasterAlphaEdge2
+; edge goes to left
+	ld	iyl, $FF
+	or	a, $08
+	ex	de, hl
+	sbc	hl, hl
 	sbc	hl, de
-	ld	a, c
-	jr	_IEntryPoint
-ITmpAdress:
-	.dl	0,0,0
-#endcomment
+IRasterAlphaEdge2:
+	ld	(IAlphaDeltaX1), hl
+	ld	(IAlphaSMC_Code1), a
+
+IAlphaValueY1=$+1
+	ld	l, $00
+	ld	h, 160
+	mlt	hl
+	add	hl, hl
+	add	hl, bc
+	ld	de, (IFramebuffer)
+	add	hl, de
+	ex	de, hl
+	pop	hl
+
+	ld	a, (IAlphaDeltaY1)
+	cpl
+
+IRasterAlphaTriangleInner:
+	push	af
+IAlphaDeltaX0=$+1
+	ld	bc, $000000
+	add	ix, bc
+	jr	nc, IRasterAlphaNoSgnChange0
+IAlphaDeltaY0=$+1
+	ld	bc, $FFFF00
+IRasterAlphaRestoreLoop0:
+IAlphaSMC_Code0=$
+	nop
+	add	ix, bc
+	jr	c, IRasterAlphaRestoreLoop0
+IRasterAlphaNoSgnChange0:
+IAlphaDeltaX1=$+1
+	ld	bc, $000000
+	add	iy, bc
+	jr	nc, IRasterAlphaNoSgnChange1
+IAlphaDeltaY1=$+1
+	ld	bc, $FFFF00
+IRasterAlphaRestoreLoop1:
+IAlphaSMC_Code1=$
+	nop
+	add	iy, bc
+	jr	c, IRasterAlphaRestoreLoop1
+IRasterAlphaNoSgnChange1:
+; hl = adress1, de = adress2
+
+	push	hl
+	push	de
+
+	sbc	hl, de
+	jp	z, IRasterAlphaSkip
+	jr	nc, so
+	add	hl, de
+	ex	de, hl
+	or	a, a
+	sbc	hl, de
+so:
+	ld	b, h
+	ld	c, l
+
+	ex	de, hl
+IRasterAlphaWrite:
+	push	bc
+IAlphaColor=$+1
+	ld	c, $00
+IAlpha=$+1
+	ld	a, $00
+	flrp	(hl), c, a
+	ld	(hl), a
+	inc	hl
+	pop	bc
+	dec	bc
+	ld	a, b
+	or	c
+	jp	nz, IRasterAlphaWrite
+
+IRasterAlphaSkip:
+
+	pop	de
+	pop	hl
+
+	ld	bc, 320
+	add	hl, bc
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+
+	pop	af
+	dec	a
+	jp	nz, IRasterAlphaTriangleInner
+	ret
+#endif

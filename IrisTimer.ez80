@@ -1,7 +1,8 @@
 #define	ITIMER_CTRL	$F20030
 #define	ITIMER_COUNT	$F20000
 
-ICPUTimerStart:
+#ifdef	IRIS_EXT_timer
+ITimerStart:
 ; now intialise and start the timer (1)
 	ld	hl, ITIMER_CTRL
 	ld	a, (hl)
@@ -24,30 +25,15 @@ ICPUTimerStart:
 ; start timer
 	set	0, (hl)
 	ret
-ICPUTimerRead:
+ITimerRead:
 	ld	hl, ITIMER_CTRL
 ; stop the timer
 	res	0, (hl)
 ; read 24 bits value in the counter register
 	ld	hl, ITIMER_COUNT
-	ld	hl, (hl)
+	ld	de, (hl)
+	inc	hl \ inc hl \ inc hl
+	ld	a, (hl)
+; full 32bits value is now ade
 	ret
-ICPUTimerConvms:
-	call	ICPUTimerRead
-; get value, divide by 48000
-	ret
-#comment
-ICPUTimerEvaluate:
-	ld	b, 0
-_ICPUTimerLoop:
-	push	bc
-	push	hl
-	ex	de, hl
-	call	ICPUTimerStart
-;call	_ind
-	call	ICPUTimerRead
-	pop	hl
-	pop	bc
-	djnz	
-	ret
-#endcomment
+#endif

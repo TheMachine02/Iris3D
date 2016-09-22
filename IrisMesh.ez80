@@ -3,47 +3,48 @@ IMeshLoad:
 ; hl : mesh name, a : format and options
 ; format options:	bits
 ; compressed		7
-; generate Z-table	6
 ; format			5-0
 ; error : c, ix = mesh adress
 	push	af
 	call	_mov9toOP1
 	call	_ChkFindSym
-	ret c
+	jr	c, _IMeshNotFound
+	call	_ChkInRam
 	ex de,hl
-;	xor a 
-;	cp  b
-;	jr z,_IMeshUnarchived
-;	pop	af
-;	scf
-;	ret
+	jr	z, _IMeshUnarchived
+; 9 bytes - name size (1b), name string, appv size (2b)
+	ld	de, 9
+	add	hl, de
+	ld	e, (hl)
+	add	hl, de	
+	inc	hl
 _IMeshUnarchived:
-; create Z table if asked
 	pop	af
 	tst	a, %10000000
 	jr	nz, _IMeshCompressed
 IMeshLoadRaw:
-	tst	a, %01000000
-	ret	z
-	and	%00111111
+	and	%01111111
 	inc	hl \ inc hl
 	push	hl
 	pop	ix
 	ld	de, (ix+0)
 	add	hl, de	; hl point to start of index list
 	ld	bc, (ix+3)	; loop size
-	ld	de, 0
+	ld	d, 0
 	ld	e, a
-	ld	iy, IZSORT_TABLE
-_ILoadZTable:	
-; don't need to init (iy+0), IComputeDepth will do that for us
-	ld	(iy+3), hl
+	ld	iy, ITRIANGLE_LIST
+_ILoadPolygonTable:	
+	ld	(iy+0), hl
 	add	hl, de
-	lea	iy, iy+6
+	lea	iy, iy+3
 	dec	bc
 	ld	a, b			; TODO : proper 16bits loop
 	or	c
-	jr	nz, _ILoadZTable
+	jr	nz, _ILoadPolygonTable
+	ret
+_IMeshNotFound:
+	pop	af
+	scf
 	ret
 _IMeshCompressed:
 	scf
@@ -57,12 +58,3 @@ _IMeshCompressed:
 ; .dl vertex_size
 ; .vertex ...
 ; .dl data
-
-IMeshReallocate:
-; reallocate the mesh vertex buffer or the z-sorting buffer
-; ix : mesh adress
-; hl : new adress
-; de : old adress
-	or	a, a
-	sbc	hl, de
-	ret

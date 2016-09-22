@@ -1,8 +1,9 @@
-#if	IVERSION==$0100
+#define	IRIS_VERSION_quat	$10
+#if	IRIS_VERSION>=IRIS_VERSION_quat
 
 ; code start - Quaternions utility functions
 
-#ifdef	IUSE_FN_QUATLOADIDENTITY
+#ifdef	IRIS_CORE_quatidentity
 IQuaternionLoadIdentity:
 	ex	de, hl
 	ld	hl, IIdentityQuaternion
@@ -13,19 +14,141 @@ IQuaternionLoadIdentity:
 	add	hl, bc
 	ret
 #endif
-#ifdef	IUSE_FN_QUATLOADROTATION
+#ifdef	IRIS_EXT_quatloadrotation
 IQuaternionLoadRotation:
 	ret
 #endif
-#ifdef	IUSE_FN_QUATMULT
-IQuaternionMult:
+#ifdef	IRIS_CORE_quatmlt
+IQuaternionMlt:
+; untested
+	ld	hl, (ix+IQZ)
+	ld	de, (iy+IQZ)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQX)
+	ld	de, (iy+IQX)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQY)
+	ld	de, (iy+IQY)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQW)
+	ld	de, (iy+IQW)
+	call	IQuatMlt
+	pop	de
+	or	a, a
+	sbc	hl, de
+	pop	de
+	or	a, a
+	sbc	hl, de
+	pop	de
+	or	a, a
+	sbc	hl, de
+; got IQW
+	push	hl
+	ld	hl, (ix+IQW)
+	ld	de, (iy+IQX)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQX)
+	ld	de, (iy+IQW)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQZ)
+	ld	de, (iy+IQY)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQY)
+	ld	de, (iy+IQZ)
+	call	IQuatMlt
+	pop	de
+	or	a, a
+	sbc	hl, de
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
+; got IQX
+	push	hl
+	ld	hl, (ix+IQW)
+	ld	de, (iy+IQY)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQX)
+	ld	de, (iy+IQZ)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQY)
+	ld	de, (iy+IQW)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQZ)
+	ld	de, (iy+IQX)
+	call	IQuatMlt
+	pop	de
+	add	hl, de
+	pop	de
+	or	a, a
+	sbc	hl, de
+	pop	de
+	add	hl, de
+; got IQY
+	push	hl
+	ld	hl, (ix+IQW)
+	ld	de, (iy+IQZ)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQX)
+	ld	de, (iy+IQY)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQY)
+	ld	de, (iy+IQX)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQZ)
+	ld	de, (iy+IQW)
+	call	IQuatMlt
+	pop	de
+	or	a, a
+	sbc	hl, de
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
+; got IQZ
+	ld	(ix+IQZ), hl
+	pop	hl
+	ld	(ix+IQY), hl
+	pop	hl
+	ld	(ix+IQX), hl
+	pop	hl
+	ld	(ix+IQW), hl
 	ret
 #endif
-#ifdef	IUSE_FN_QUATMAGNITUDE
+#ifdef	IRIS_EXT_quatmagnitude
 IQuaternionMagnitude:
+	ld	hl, (ix+IQW)
+	call	IQuatSquare
+	push	hl
+	ld	hl, (ix+IQX)
+	call	IQuatSquare
+	push	hl
+	ld	hl, (ix+IQY)
+	call	IQuatSquare
+	push	hl
+	ld	hl, (ix+IQZ)
+	call	IQuatSquare
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
 	ret
 #endif
-#ifdef	IUSE_FN_QUATCONJUGATE
+#ifdef	IRIS_EXT_quatconjugate
 IQuaternionConjugate:
 	ld	de, (ix+3)
 	or	a, a
@@ -44,11 +167,19 @@ IQuaternionConjugate:
 	ld	(ix+9), hl
 	ret
 #endif
-#ifdef	IUSE_FN_QUATNORMALIZE
+#ifdef	IRIS_EXT_quatnormalize
 IQuaternionNormalize:
+	call	IQuatMagnitude
+	call	ISquareRoot
+; de = norm of the quaternion
+; do quat.w/de
+
+	ret
+IQuatDivide:
+; do HL*16384/DE
 	ret
 #endif
-#ifdef	IUSE_FN_QUATGETMATRIX
+#ifdef	IRIS_CORE_quatgetmatrix
 IQuaternionGetMatrix:
 ; iy quaternion, ix matrix
 ; (qw, qx, qy, qz)
@@ -148,6 +279,7 @@ IQuaternionGetMatrix:
 	ld	(ix+8), h
 	ret
 #endif
+#ifdef	IRIS_CORE_quatrotaxis
 IQuaternionRotationAxis:
 ; iy adress of quaternion to write
 ; ix unit vector
@@ -174,8 +306,42 @@ IQuaternionRotationAxis:
 	call	IQuatCos
 	ld	(iy+IQW), hl
 	ret
+#endif
+#ifdef	IRIS_EXT_quatdot
+IQuaternionDot:
+	ld	hl, (ix+IQW)
+	ld	de, (iy+IQW)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQX)
+	ld	de, (iy+IQX)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQY)
+	ld	de, (iy+IQY)
+	call	IQuatMlt
+	push	hl
+	ld	hl, (ix+IQZ)
+	ld	de, (iy+IQZ)
+	call	IQuatMlt
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
+	pop	de
+	add	hl, de
+	ret
+#endif
+#ifdef	IRIS_EXT_quatslerp
+IQuaternionSlerp:
+	ret
+#endif
+
+; always included functions to works with quaternions, called by the majority of the routines.
+
 IQuatMlt:
-	call	IFPMul
+; hl *de, de is not destroyed
+	call	IFPMlt
 ; and now divide by 64
 	add	hl, hl
 	add	hl, hl
@@ -187,54 +353,57 @@ IQuatMlt:
 	ld	l, c	
 	ret
 IQuatSquare:
+; bc is kept intact
 	call	IFPSquare
 ; divide by 32
 	add	hl, hl
 	add	hl, hl
 	add	hl, hl
 	ld	a, hlu
-	ld	c, h
+	ld	e, h
 	or	a, a
 	sbc	hl, hl
 	ld	h, a
-	ld	l, c
+	ld	l, e
 	ret
 IQuatCos:
 	inc	h
 IQuatSin:
 	bit	0, h
 	ld	a, l
-	jr	z, _IQuatSinSkp1
+	jr	z, IQuatSinSkp1
 	neg
-	jr	z, _IQuatIndexZero
-_IQuatSinSkp1:
+	jr	z, IQuatIndexZero
+IQuatSinSkp1:
 	bit	1, h
-	jr	nz, _IQuatSinNegate
+	jr	nz, IQuatSinNegate
 	ld	hl, ISIN_TABLE
 	ld	l, a
 	ld	c, (hl)
 	inc	h
 	ld	b, (hl)
+	or	a, a
 	sbc	hl, hl
 	ld	h, b
 	ld	l, c
 	ret
-_IQuatSinNegate:
+IQuatSinNegate:
 	ld	hl, ISIN_TABLE
 	inc.s	bc
 	ld	l, a
 	ld	c, (hl)
 	inc	h
 	ld	b, (hl)
+	or	a, a
 	sbc	hl, hl
 	sbc	hl, bc
 	ret
-_IQuatIndexZero
+IQuatIndexZero:
 	bit	1, h
-	jr	nz, _IQuatNegResultCst
+	jr	nz, IQuatNegResultCst
 	ld	hl, $004000
 	ret
-_IQuatNegResultCst:
+IQuatNegResultCst:
 	ld	hl, $FFC000
 	ret
 #else

@@ -1,5 +1,7 @@
 #include	"IrisColor.ez80"
 #include	"IrisData.ez80"
+#include	"IrisDepthSort.ez80"
+;;#include	"IrisFilter.ez80"
 #include	"IrisFramebuffer.ez80"
 #include	"IrisMath.ez80"
 #include	"IrisMatrix.ez80"
@@ -8,36 +10,41 @@
 #include	"IrisRaster.ez80"
 #include	"IrisTimer.ez80"
 #include	"IrisVector.ez80"
+#include	"IrisCliping.ez80"
+
+; #include	"IrisEXAA.ez80" ;
 
 ; functions
 
 IEngineInit:
 ; get indic off
 	call	_RunIndicoff
-	;ld	c, %11111111
-	ld	c, %00000000
-	call	IScreenReset
 ; disable interrupt and start LCD interrupt
+	call	_boot_ClearVRAM
 	di
 	ld	a, (ILCD_IMSC)
 	or	%00000100
 	ld	(ILCD_IMSC), a
 ; setup 8bpp mode
 	ld a,IBPP8
-	ld (ILCD_CTRL),a
+	ld	(ILCD_CTRL),a
 ; load vram buffer
-	ld	hl, IVRAMF0
+	ld	hl, IFRAMEBUFFER_AUX0
 	ld	(ILCD_BUFFER), hl
-	ld	hl, IVRAMF1
+	ld	hl, IFRAMEBUFFER_AUX1
 	ld	(IFramebuffer), hl
-; test - reallocate IVector
-	ld	hl, IDrawTriangle
-	ld	bc, 512
+
+;	ld	hl, IRasterTriangle
+	ld	hl, IVectorDot
 	ld	de, IVRAM
+	ld	bc, 1024
 	ldir
+
 	jp	IResetPalette
 IEngineQuit:
-	ld hl,0F50000h
+	ld	a, $D0
+	.db	$ED,$6D
+	ld hl,$F50000
 	xor a		; Mode 0
 	ld (hl),a
 	inc l		; 0F50001h
@@ -52,12 +59,11 @@ IEngineQuit:
 	ld (hl),a
 	inc l		; 0F50005h
 	ld (hl),a	; Number of columns to scan
-	ld iy,__OS__FLAGS
-	ld a,IBPP16
+	ld iy, OS__FLAGS
+	ld a, IBPP16
 	ld (ILCD_CTRL),a
-	ld	hl, IVRAMF0
+	ld	hl, IFRAMEBUFFER_AUX0
 	ld	(ILCD_BUFFER), hl
-	call	IWait
 	call _HomeUp
 	call _Clrscrn
 	call _DrawStatusBar

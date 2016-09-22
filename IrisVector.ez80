@@ -1,8 +1,10 @@
-#if	IVERSION==$0100
+#define IRIS_VERSION_vec    $10
+#if IRIS_VERSION>=IRIS_VERSION_vec
 
 ; code start - vector utility fonctions
 
-#ifdef	IUSE_FN_VECCROSS
+#ifdef	IRIS_CORE_veccross
+#define	xpd	call IVectorCross
 IVectorCross:
 ; (hl) = (ix) cross (iy)
 ; 774 TStates, 177 Bytes
@@ -132,41 +134,39 @@ IVectorCross:
 	dec	hl
 	ret
 #endif
-#ifdef	IUSE_FN_VECDOT
+#ifdef	IRIS_CORE_vecdot
+#define	dp3	call IVectorDot
 IVectorDot:
 ; hl = (ix) dot (iy)
-; From 344 to 350 TStates, 76 Bytes
-	ld	b, (ix+0)
-	ld	c, (iy+0)
-	xor	a, a
-	sbc	hl, hl
-	bit	7, b
-	jr	z, $+3
-	add	a, c
-	bit	7, c
-	jr	z, $+3
-	add	a, b
-	mlt	bc
-	add	hl, bc
-	ld	b, a
-	xor	a, a
-	ld	c, a
-	sbc	hl, bc
+	ld	h, (ix+0)
+	ld	l, (iy+0)
+	ld	a, h
+	rla
+	sbc	a, a
+	and	l
+	ld	e, a
+	ld	a, l
+	rla
+	sbc	a, a
+	and	h
+	add	a, e
+	mlt	hl
+	ld	e, a
 	ld	b, (ix+1)
 	ld	c, (iy+1)
-	xor	a, a
-	bit	7, b
-	jr	z, $+3
-	add	a, c
-	bit	7, c
-	jr	z, $+3
-	add	a, b
+	ld	a, b
+	rla
+	sbc	a, a
+	and	c
+	ld	d, a
+	ld	a, c
+	rla
+	sbc	a, a
+	and	b
+	add	a, d
 	mlt	bc
 	add	hl, bc
-	ld	b, a
-	xor	a
-	ld	c, a
-	sbc	hl, bc
+	ld	d, a
 	ld	b, (ix+2)
 	ld	c, (iy+2)
 	xor	a, a
@@ -179,11 +179,16 @@ IVectorDot:
 	mlt	bc
 	add	hl, bc
 	ld	b, a
-	xor	a
+	xor	a, a
 	ld	c, a
+	sbc	hl, bc
+	ld	b, e
+	sbc	hl, bc
+	ld	b, d
 	sbc	hl, bc
 	ret
 #endif
+#ifdef	IRIS_EXT_vecmlt
 IVectorMlt:
 	ld	c, (ix)
 	ld	b, a
@@ -198,7 +203,31 @@ IVectorMlt:
 	mlt	bc
 	ld	(ix+2), b
 	ret
-#ifdef	IUSE_FN_VECLENGTH
+#endif
+#ifdef	IRIS_EXT_vecmix
+IVectorMix:
+; ix,iy,hl
+	ex	de, hl
+	lea	hl, ix+0
+	ld	a, (iy+0)
+	add	a, (hl)
+	rra
+	ld	(de), a
+	inc	hl
+	inc	de
+	ld	a, (iy+1)
+	add	a, (hl)
+	rra
+	ld	(de), a
+	inc	hl
+	inc	de
+	ld	a, (iy+2)
+	add	a, (hl)
+	rra
+	ld	(de), a
+	ret
+#endif
+#ifdef	IRIS_CORE_veclength
 IVectorLength:
 ; A lot of TStates
 	push	hl
@@ -233,7 +262,7 @@ IVectorLength:
 	pop	de
 	ret
 #endif
-#ifdef	IUSE_FN_VECAPPROXLENGTH
+#ifdef	0
 IVectorApproxLength:
 ; hl = dx, dy = de
 ; abs(de), abs(hl)
@@ -272,22 +301,241 @@ _IFDSwap:
 	adc	hl, hl
 	ret
 #endif
-#ifdef	IUSE_FN_VECNORMALIZE
+#ifdef	IRIS_CORE_vecnormalize
 IVectorNormalize:
-	ret
-#endif
-#ifdef	IUSE_FN_VECCOPY
-IVectorCopy:
-; hl : vector to copy, de : destination adress
-	ld	bc, 3
-	ldir
-	ret
-#endif
-#ifdef	IUSE_FN_VECREFLECT
-IVectorReflect:
-	ret
-#endif
+; do : lenreg=length(vector)
+; vec.x=/lenreg
+; vec.y=/lenreg
+; vec.z=/lenreg
 
+
+
+	ret
+#endif
+#ifdef	IRIS_EXT_vecreflect
+#define	rfl	call	IVectorReflect
+IVectorReflect:
+; I = ix, N = iy, hl = result
+; reflection direction I-2*dot(N,I)*N
+	push	hl
+	call	IVectorDot
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+; scale N vector
+	ld	b, h
+	pop	de
+	ld	l, (iy+0)
+	ld	a, h
+	rla
+	sbc	a, a
+	and	l
+	ld	c, a
+	ld	a, l
+	rla
+	sbc	a, a
+	and	h
+	add	a, c
+	ld	c, a
+	mlt	hl
+	ld	a, h
+	sub	c
+	ld	h, a
+	add	hl, hl
+	add	hl, hl
+	ld	c, h
+	ld	a, (ix+0)
+	sub	a, c
+	ld	(de), a
+	inc	de
+
+	ld	h, b
+	ld	l, (iy+1)
+	ld	a, h
+	rla
+	sbc	a, a
+	and	l
+	ld	c, a
+	ld	a, l
+	rla
+	sbc	a, a
+	and	h
+	add	a, c
+	ld	c, a
+	mlt	hl
+	ld	a, h
+	sub	c
+	ld	h, a
+	add	hl, hl
+	add	hl, hl
+	ld	c, h
+	ld	a, (ix+1)
+	sub	a, c
+	ld	(de), a
+	inc	de
+
+	ld	h, b
+	ld	l, (iy+2)
+	ld	a, h
+	rla
+	sbc	a, a
+	and	l
+	ld	c, a
+	ld	a, l
+	rla
+	sbc	a, a
+	and	h
+	add	a, c
+	ld	c, a
+	mlt	hl
+	ld	a, h
+	sub	c
+	ld	h, a
+	add	hl, hl
+	add	hl, hl
+	ld	c, h
+	ld	a, (ix+2)
+	sub	a, c
+	ld	(de), a
+	ret
+#endif
+#ifdef	IRIS_CORE_vecproject
+IVectorProject:
+; to get 1 bit more : ;	add	hl, hl \ sbc hl, bc
+	ld	ix, IPosition
+IVectorPEntry:
+	ld	bc, (ix+6)	
+IVectorPEntry2:
+	ld	hl, (ix+3)
+	ld	a, (ix+5)
+	rlca
+	jr	nc, IVectorYPos
+	or	a, a
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+IVectorYPos:
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	cpl
+;	inc	a
+;	add	a, a
+	ld	l, 120
+	ld	h, a
+	mlt	hl
+	ld	a, h
+
+;	bit	7, l
+;	jr	z, $+3
+;	inc	a
+
+	jr	c, IVectorYSkp
+	neg
+IVectorYSkp:
+	add	a, 120
+;;	ld	(ISMC_VecY), a
+	push	af
+IVectorX:
+	ld	hl, (ix+0)
+	ld	a, (ix+2)
+	rlca
+	jr	nc, IVectorXPos
+	or	a, a
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+IVectorXPos:
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ adc a,a
+	add hl,hl \ sbc hl,bc \ adc a,a
+	cpl
+	inc	a
+	ld	c, a
+	ld	b, 160
+	mlt	bc
+	ld	a, b	
+;	bit	7, c
+;	jr	z, $+3
+;	inc	a
+
+	sbc	hl, hl
+	jr	nc, IVectorXSkp
+	neg
+	jr	z, IVectorXSpecial
+IVectorXSkp:
+	ld	l, a
+	ld	de, 160
+	add	hl, de
+IVectorXEntry:
+;ISMC_VecY=$+1
+;	ld	e, $00
+	pop	af
+	ret
+IVectorXSpecial:
+	inc	hl
+	ld	l, 160
+;	jr	IVectorXEntry
+	pop	af
+	ret
+#endif
+#ifdef	IRIS_CORE_vectransform
+IVectorTransform:
+; input : iy vector, ix matrix
+; [ix+0]*[iy]+[ix+1]*[iy+2]+[ix+2]*[iy+4]+[ix+9]=x
+; [ix+3]*[iy]+[ix+4]*[iy+2]+{ix+5]*[iy+4]+[ix+12]=y
+; [ix+6]*[iy]+[ix+7]*[iy+2]+[ix+8]*[iy+4]+[ix+15]=z
+; From 1556 TStates to 1642 TStates, 351 bytes
+; X coordinate
+	ld	hl, (ix+9)
+	ld	a, (ix+0)
+	ld	bc, (iy+0)
+	fma
+	ld	a, (ix+1)
+	ld	bc, (iy+2)
+	fma
+	ld	a, (ix+2)
+	ld	bc, (iy+4)
+	srf
+	fma
+	crf
+	ld	(IPositionX), hl
+; Y coordinate
+	ld	hl, (ix+12)
+	ld	a, (ix+5)
+	fma
+	ld	a, (ix+4)
+	ld	bc, (iy+2)
+	fma
+	ld	a, (ix+3)
+	ld	bc, (iy+0)
+	srf
+	fma
+	crf
+	ld	(IPositionY), hl
+; Z coordinate
+	ld	hl, (ix+15)
+	ld	a, (ix+6)
+	fma
+	ld	a, (ix+7)
+	ld	bc, (iy+2)
+	fma
+	ld	a, (ix+8)
+	ld	bc, (iy+4)
+	fma
+	ld	(IPositionZ), hl
+	ret
+#endif
 #else
 	.echo	"IrisVector.ez80 version doesn't correspond to Iris3D.inc version"
 #endif

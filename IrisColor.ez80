@@ -1,30 +1,5 @@
-IMixR5G6B5:
-; mix hl and de
-	ld	a, d
-	and	h
-; and %00001000	; 8
-	and	1<<(6+5-8)
-	ld	b, a
-	ld	a, e
-	and	l
-; and	%00100001	; 33
-	and	(1<<5)+1
-	ld	c, a
-; res 4,d
-	res	(6+5)&7, d
-	ld	a, e
-; and %11011111 ; 223
-	and	~((1<<5)+1)
-	ld	e, a
-; res 4,h
-	res	(6+5)&7, h
-	res	5, l
-	add	hl, de
-	rr	h
-	rr	l
-	add	hl, bc
-	ret
-ICOlorMix:
+#ifdef	IRIS_EXT_colormix
+IColorMix:
 ; RBG color
 ; 60 TStates [without call]//15
 ; mix h with l
@@ -44,7 +19,53 @@ ICOlorMix:
 	rra
 	add	a, c
 	ret
+#endif
+#ifdef	IRIS_EXT_colormlt
 IColorMlt:
+; multiply two color
+; color = color x color
+; c col1, b col2
+	ld	a, b
+	and	%00000111
+	ld	h, a
+	ld	a, c
+	and	%00000111
+	ld	l, a
+	mlt	hl
+	ld	a, l
+	and	%00111000
+	rrca \ rrca \ rrca
+	ld	e, a
+
+	ld	a, b
+	and	%00011000
+	ld	h, a
+	ld	a, c
+	and	%00011000
+	ld	l, a
+	mlt	hl
+	ld	a, l
+	and	%01100000
+	rrca \ rrca
+	or	e
+	ld	e, a
+	
+	ld	a, b
+	and	%11100000
+	ld	h, a
+	ld	a, c
+	and	%11100000
+	ld	l, a
+	mlt	hl
+	ld	a, h
+	and	%00000111
+	rrca \ rrca \ rrca
+	or	e
+
+	ret
+#endif
+#ifdef	IRIS_EXT_colorscale
+IColorScale:
 ; color = color x factor
 ; c color, b factor
 	ld	h, b
@@ -52,9 +73,7 @@ IColorMlt:
 	and	%00000111
 	ld	l, a
 	mlt	hl
-	ld	a, h
-	and	%00000111
-	ld	e, a
+	ld	e, h
 	ld	h, b
 	ld	a, c
 	and	%00011000
@@ -73,4 +92,4 @@ IColorMlt:
 	and	%11100000
 	or	e
 	ret
-
+#endif
