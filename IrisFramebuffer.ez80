@@ -1,5 +1,74 @@
 ; code start - framebuffer functions
 
+#define	IGREEN_BITS	%00000111
+#define	IRED_BITS		%11100000
+#define	IBLUE_BITS		%00011000
+#define	ICOLOR_LOW_BIT	%00101001
+
+ILerpRBG:
+	ret
+IBlendRBG:
+; blend color c and a
+; destroy b and e
+	ld	b, a
+	and	c
+	and	ICOLOR_LOW_BIT
+	ld	e, a
+	ld	a, b
+	and	~ICOLOR_LOW_BIT
+	ld	b, a
+	ld	a, c
+	and	~ICOLOR_LOW_BIT
+	add	a, b
+	rra
+	add	a, e
+	ret
+ILitRBG:
+; lit a color (c) by factor (a)
+; destroy bc, hl
+	ld	b, a
+	ld	a, c
+	and	IGREEN_BITS
+	ld	l, a
+	ld	h, b
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	tst	a, %11111000
+	jr	z, $+4
+	ld	h, IGREEN_BITS
+	ld	a, c
+	and	IBLUE_BITS
+	ld	l, a
+	ld	a, h
+	ld	h, b
+	mlt	hl
+	add	hl, hl
+	add	hl, hl
+	ld	l, a
+	ld	a, h
+	tst	a, %11100000
+	jr	z, $+4
+	ld	a, IBLUE_BITS
+	and	IBLUE_BITS
+	or	l
+	ld	h, b
+	ld	b, a
+	ld	a, c
+	and	IRED_BITS
+	ld	l, a
+	mlt	hl
+	ld	a, h
+	tst	a, %11000000
+	jr	z, $+4
+	ld	h, IRED_BITS>>2
+	add	hl, hl
+	add	hl, hl
+	ld	a, h
+	and	IRED_BITS
+	or	b
+	ret
 IResetPalette:
 ; load palette :
 ; color is 3-3-2 format, RGB
@@ -110,6 +179,7 @@ IClearEntry:
 	sbc	hl, hl
 	add	hl, de
 	inc	de
+;	ld	hl, $E40000
 	ld	bc, 76799
 	ldir
 	ret
@@ -117,21 +187,15 @@ IFlush:
 ; swap the framebuffer and synchronize with LCD
 	ld	hl, (ILCD_BUFFER) 
 	ld	de, (IFramebuffer)
-	ex	de, hl
-	ld	(IFramebuffer), de
-	ld	de, ILCD_ICR
-	ld	a, (de)
-	or	%00000100
-	ld	(de), a
-	ld	(ILCD_BUFFER), hl
+	ld	(IFramebuffer), hl
+	ld	(ILCD_BUFFER), de
+	ld	hl, ILCD_ICR
+	set	2, (hl)
+	ld	l, ILCD_ISR&$FF
 _IWaitLoop:
-	ld	a, (ILCD_ISR)
-	and	%00000100
+	bit	2, (hl)
 	jr	z, _IWaitLoop
-;	ld	(IWaitTime), bc
 	ret
-;IWaitTime:
-;.dl	0
 IWait:
 ; wait until the LCD finish displaying the frame
 	ld	de, ILCD_ICR
