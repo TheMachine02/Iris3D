@@ -1,16 +1,10 @@
-#define  ITEXTURE_COMPRESSED     %00000001
-#define  ITEXTURE_ARBG           %00000010
-#define  ITEXTURE_RBG            %00000100
-#define  ITEXTURE_MIPMAP         %00001000	; 4 lvl
-#define  ITEXTURE_LINEAR         %00010000
-#define  ITEXTURE_PERSPECTIVE    %00100000
-#define  ITEXTURE_OFFSET         3
-
+#define  ITEXTURE_BC1           %00000001
+#define  ITEXTURE_RBG           %00000010  
 ; max ;
 
-#define  ITEXTURE_MAX_SIZE       21763		; 128²+64²+32²+16²
-#define  ITEXTURE_MAX_HEIGHT     128
-#define  ITEXTURE_MAX_WIDTH      128
+#define  ITEXTURE_MAX_SIZE       65028
+#define  ITEXTURE_MAX_HEIGHT     255
+#define  ITEXTURE_MAX_WIDTH      255
 
 ; texture format :
 ; .db flags
