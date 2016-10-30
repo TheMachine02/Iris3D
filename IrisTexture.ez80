@@ -1,0 +1,1008 @@
+#define	ITEXTURE_BC1	%00000001
+#define	ITEXTURE_RBG	%00000010
+
+; max ;
+
+#define	ITEXTURE_SIZE	255
+
+ITextureMapTriangle:
+    ld	a, (de)
+    sub	a, (hl)
+    jr	c, ITextureSwap0
+    ex	de, hl
+ITextureSwap0:
+    ld	a, (bc)
+    sub	a, (hl)
+    jr	nc, ITextureSwap1
+    push	hl
+    or	a, a
+    sbc	hl, hl
+    add	hl, bc
+    pop	bc
+ITextureSwap1:
+    ld	a, (de)
+    sub	a, (hl)
+    jr	nc, ITextureSwap2
+    ex	de, hl
+ITextureSwap2:
+
+    ld	a, (bc)
+    sub	(hl)
+    ret	z
+; generate texture gradient and everything used in inner loop
+    call   ITextureSetup
+
+    ld     a, iyh
+    ld	ix, $FF0000
+    ld	iy, $FF0000
+    ld	ixl, a
+    neg
+    ld	(ITextureDeltaY0), a
+; x1-x0
+    ld	a, (de)
+    ld	(ITextureValueY1), a
+    sub	(hl)
+    push	af
+    ld	iyl, a
+    neg
+    ld	(ITextureDeltaY1), a
+
+    ld	a, (hl)
+    push	af
+
+    push	bc
+    inc	hl
+    ld	bc, (hl)
+    ex	de, hl
+    inc	hl
+    ld	hl, (hl)
+    ld	(ITextureValueX1), hl
+    jr	z, ITextureNoEdgeWrite
+    ld	a, $13
+    or	a, a
+    sbc	hl, bc
+    jr	nc, ITextureEdge1
+    or	a, $08
+    ex	de, hl
+    sbc	hl, hl
+    sbc	hl, de
+ITextureEdge1:
+    ld	(ITextureDeltaX1), hl
+    ld	(ITextureCode1), a
+
+    lea	de, iy+0
+    add	hl, de
+    ex	de, hl
+    sbc	hl, hl
+    ccf
+    sbc	hl, de
+    sra	h
+    rr	l
+    ex	de, hl
+    ld	iyh, d
+    ld	iyl, e
+
+ITextureNoEdgeWrite:
+    pop	hl
+
+; x2-x0
+    inc	hl
+    ld	hl, (hl)
+    ld	(ITextureValueX2), hl
+    ld	a, $23			; inc hl
+    or	a, a
+    sbc	hl, bc
+; if x0>x1, edge goes to left
+    jr	nc, ITextureEdge0
+    or	a, $08			; dec hl
+; edge goes to left
+    ex	de, hl
+    sbc	hl, hl
+    sbc	hl, de
+ITextureEdge0:
+    ld	(ITextureDeltaX0), hl
+    ld	(ITextureCode0), a
+
+    lea	de, ix+0
+    add	hl, de
+    ex	de, hl
+    sbc	hl, hl
+    ccf
+    sbc	hl, de
+    sra	h
+    rr	l
+    ex	de, hl
+    ld	ixh, d
+    ld	ixl, e
+
+	pop	hl
+	ld	l, 160
+	mlt	hl
+	add	hl, hl
+	add	hl, bc
+	ld	de, (IFramebuffer)
+	add	hl, de
+	ex	de, hl
+	sbc	hl, hl
+	add	hl, de
+
+	pop	af
+	call	nz, ITextureMapOuter
+	ld	a, (ITextureDeltaY0) ; y2-y0
+	ld	c, a
+	ld	a, (ITextureDeltaY1)
+	sub	c
+	ret	z
+;	push	af
+	ld	iyl, a
+	neg
+	ld	(ITextureDeltaY1), a
+
+	push	hl
+
+ITextureValueX2=$+1
+	ld	hl, $000000
+ITextureValueX1=$+1
+	ld	bc, $000000
+	or	a, a
+	sbc	hl, bc
+	ld	a, $13
+; if x0>x1, edge goes to left
+	jr	nc, ITextureEdge2
+	or	a, $08
+	ex	de, hl
+	sbc	hl, hl
+	sbc	hl, de
+ITextureEdge2:
+	ld	(ITextureDeltaX1), hl
+	ld	(ITextureCode1), a
+
+	lea	de, iy+0
+	ld	d, $00 ;compensate due to previous looping
+	ld	a, e
+	add	hl, de
+	ex	de, hl
+	sbc	hl, hl
+	ccf
+	sbc	hl, de
+	sra	h
+	rr	l
+	ex	de, hl
+	ld	iyh, d
+	ld	iyl, e
+
+ITextureValueY1=$+1
+	ld	l, $00
+	ld	h, 160
+	mlt	hl
+	add	hl, hl
+	add	hl, bc
+	ld	de, (IFramebuffer)
+	add	hl, de
+	ex	de, hl
+	pop	hl
+
+;	ld	a, (IDeltaY1)
+;	neg
+;	pop	af
+ITextureMapOuter:
+	push	af
+ITextureDeltaX0=$+1
+	ld	bc, $000000
+	add	ix, bc
+	jr	nc, $+11
+ITextureDeltaY0=$+1
+	ld	bc, $FFFF00
+ITextureCode0=$
+	nop
+	add	ix, bc
+	jr	c, $-3
+
+ITextureDeltaX1=$+1
+	ld	bc, $000000
+	add	iy, bc
+	jr	nc, $+11
+ITextureDeltaY1=$+1
+	ld	bc, $FFFF00
+ITextureCode1=$
+	nop
+	add	iy, bc
+	jr	c, $-3
+
+	push	hl
+	push	de
+	push	ix
+
+	push	hl	; correct span start
+ITextureDirection0=$
+	nop		; ex de,hl
+	sbc	hl, de
+	jr	z, ITextureNull
+	srl	h
+	ld	a, l
+	rra
+	rra
+	rra
+	inc	a
+	and	%00111111
+	ex	af, af'
+	ld	a, l
+	and	%00000111
+	ld	l, a
+	add	hl, hl
+	add	hl, hl
+ITextureDirection1=$+1
+	ld	bc, ITextureUnit0
+	add	hl, bc
+	ld	ix, (hl)
+; bc'=frac constant
+; bc =int constant
+; de =int 2 constant
+; hl = adress
+; hl'=frac
+; de'=framebuffer
+; a' =size		
+;	ex	af, af'
+	pop	de	; framebuff
+	ld	hl, (ITextureFrac)
+
+ITextureXFracCst=$+1
+	ld	bc, $000000
+	exx
+	ld	hl, (ITextureAdress)
+ITextureXIntCst=$+1
+	ld	bc, $000000
+ITextureSize4=$+1
+	ld	de, $000000
+	jp	(ix)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ITextureNull:
+	pop	hl
+ITextureNext:
+	ld	hl, (ITextureFrac)
+ITextureYFracCst=$+1
+	ld	bc, $000000
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	ld	(ITextureFrac), hl
+	ld	hl, (ITextureAdress)
+ITextureYIntCst=$+1
+	ld	bc, $000000
+	adc	hl, bc
+	rra
+	jr	nc, $+3+4
+ITextureSize3=$+1
+	ld	de, $000000
+	add	hl, de
+	ld	(ITextureAdress), hl
+	pop	ix
+	pop	hl
+	pop	de
+	ld	bc, 320
+	add	hl, bc
+	ex	de, hl
+	add	hl, bc
+	pop	af
+	dec	a
+	jp	nz, ITextureMapOuter
+	ret
+
+ITextureSetup:
+; SMC :
+; ITextureDirection0 : 0 or 'ex de,hl' (based on dx sign)
+; ITextureDirection1 : + span routine if dx>0, - else
+; ITextureXFracCst frac(du)*65536+frac(dv)
+; ITextureXIntCst int(dv)*t_size+int(du)
+; ITextureFrac=0
+; ITextureAdress=v0*t_size+u0
+; ITextureYIntCst
+; ITextureYFracCst
+; hl = 0, de = 1, bc = 2
+	ld	ix, ITextureTmpSave
+	ld	(ix+0), hl
+	ld	(ix+3), de
+	ld	(ix+6), bc
+
+; Texture delta's on Y
+; (u2-u0)/(y2-y0)
+; (v2-v0)/(y2-y0)
+	ld	a, (bc)
+	ex	de, hl
+	sub	(hl)
+	ex	de, hl
+	ld	iyl, a
+	ld	a, (bc)
+	sub	(hl)
+	ld	iyh, a
+	inc hl \ inc hl \ inc hl \ inc hl
+	inc bc \ inc bc \ inc bc \ inc bc
+	inc de \ inc de \ inc de \ inc de
+	ld	(ix+9), hl
+	ld	(ix+12), de
+	ld	(ix+15), bc
+	ld	de, 0			; something should fix the de,0
+	ld	e, a
+	ld	a, (bc)
+	sub	(hl)
+	push	af	; push a and the carry flag
+	inc	hl \ inc bc
+	ld	a, (bc)
+	sub	(hl)
+; do dv/dy first
+	push	af
+	ld	hl, IRISData__invtable
+	add	hl, de
+	add	hl, de
+; reset bcu
+	inc.s	bc
+	ld	c, (hl)
+	inc	hl
+	ld	b, (hl)	;52
+	pop	af
+; bc (us)*a/256, carry=sign
+; b*a+(c*a)/256 , if carry = do hl-bc
+	ld	h, b
+	ld	l, a
+	mlt	hl
+	jr	nc, $+5
+	or	a, a
+	sbc	hl, bc
+	ld	d, c
+	ld	e, a
+	mlt	de
+; divide by 256
+	ld	e, d
+	ld	d, 0
+	add	hl, de
+; hl = dv/dy
+; now get du/dy
+	pop	af
+	push	hl
+	ld	h, b
+	ld	l, a
+	mlt	hl
+	jr	nc, $+5
+	or	a, a
+	sbc	hl, bc
+	ld	d, c
+	ld	e, a
+	mlt	de
+; divide by 256
+	ld	e, d
+	ld	d, 0
+	add	hl, de
+	pop	de
+; hl = du/dy, de = dv/dy
+; ITextureYIntCst
+; ITextureYFracCst
+; ITextureYTexSize	; based on sign of dv
+	ld	a, l
+	ld	(ITextureYFracCst+2), a
+	ld	a, e
+	ld	(ITextureYFracCst+0), a
+; txint = int(dv)*t_size (signed) + int(du) (signed)
+ITexturePack0:
+ITextureSize1=$+2
+	ld	bc, $000000
+; do c*signed(de/256)+signed(hl/256)
+	push	hl
+	ex	de, hl
+	ld	d, b
+	ld	e, h
+	add	hl, hl
+	ex	de, hl
+	mlt	hl
+	jr	nc, $+5
+	or	a, a
+	sbc	hl, bc
+	ex	de, hl
+	pop	hl
+	ld	a, h
+	add	hl, hl
+	sbc	hl, hl
+	ld	l, a
+	add	hl, de
+; hl is result?
+	ld	(ITextureYIntCst), hl
+; du = ((u2-u0)*(y2-y1)-(u2-u1)*(y2-y0))/dx
+; dv = ((v2-v0)*(y2-y1)-(v2-v1)*(y2-y0))/dx
+; dx = (x2-x0)*(y2-y1) - (x2-x1)*(y2-y0)
+; RESTORE HL DE BC
+; get dx first, sign for ITextureDirection0 and 1
+	ld	hl, (ix+6)
+	inc	hl
+	ld	bc, (hl)
+	ld	hl, (ix+0)
+	inc	hl
+	ld	hl, (hl)
+
+	or	a, a
+	sbc	hl, bc	; (x0-x2)
+	ld	a, iyl
+	ld	d, a
+	ld	e, l
+	ld	l, a
+	mlt	hl
+	jp	p, +_
+	ld	a, h
+	sub	d
+	ld	h, a
+_:
+	slhl
+	mlt	de
+	add	hl, de
+	ex	de, hl	; de = (x0-x2)*(y2-y1)
+	ld	hl, (ix+3)
+	inc	hl
+	ld	hl, (hl)
+	or	a, a
+	sbc	hl, bc	; (x1-x2)
+	ld	a, iyh
+	ld	b, a
+	ld	c, l
+	ld	l, a
+	mlt	hl
+	jp	p, +_
+	ld	a, h
+	sub	b
+	ld	h, a
+_:
+	slhl
+	mlt	bc
+	add	hl, bc	; (x1-x2)*(y2-y0)
+; do (x1-x2)*(y2-y0)-(x0-x2)*(y2-y1)
+	xor	a, a
+	sbc	hl, de
+	jp	p, ITextureDXAbs
+	ex	de, hl
+	or	a, $EB
+	sbc	hl, hl
+	sbc	hl, de
+ITextureDXAbs:
+	xor	$EB
+	ld	(ITextureDirection0), a
+	push	hl
+	rra
+	sbc	a, a
+	and	224
+	add	a, ITextureUnit1%256
+	ld	(ITextureDirection1), a
+ITextureGetDU:
+; du = ((u2-u0)*(y2-y1)-(u2-u1)*(y2-y0))/dx
+	ld	hl, (ix+12)
+	ld	b, (hl) 	; u1
+	ld	de, (ix+15)
+	ld	a, (de)
+	ld	c, a		; u2, c-b
+	ld	hl, (ix+9)
+	sub	(hl)		; u0
+	ld	de, 0
+	ld	l, a
+	ld	a, iyl
+	ld	h, a
+	mlt	hl
+	jr	nc, $+6
+	or	a, a
+	ld	d, a
+	sbc	hl, de
+	ld	a, c
+	sub	b
+	ld	d, iyh
+	jr	nc, $+3
+	add	hl, de
+	ld	e, a
+	mlt	de
+	xor	a, a
+	sbc	hl, de
+	ex	de, hl
+	pop	bc
+	call	ITextureFDiv
+; de div bc, fast, p/v flag sign of de, bc positive
+; de=result
+	push	de
+	push	bc
+ITextureGetDV:
+; du = ((u2-u0)*(y2-y1)-(u2-u1)*(y2-y0))/dx
+	ld	hl, (ix+12)
+	inc	hl
+	ld	b, (hl) 	; v1
+	ld	de, (ix+15)
+	inc	de
+	ld	a, (de)
+	ld	c, a		; v2, c-b
+	ld	hl, (ix+9)
+	inc	hl
+	sub	(hl)		; v0
+	ld	de, 0
+	ld	l, a
+	ld	a, iyl
+	ld	h, a
+	mlt	hl
+	jr	nc, $+6
+	or	a, a
+	ld	d, a
+	sbc	hl, de
+	ld	a, c
+	sub	b
+	ld	d, iyh
+	jr	nc, $+3
+	add	hl, de
+	ld	e, a
+	mlt	de
+	xor	a, a
+	sbc	hl, de
+	ex	de, hl
+	pop	bc
+	call	ITextureFDiv
+; de div bc, fast, p/v flag sign of de, bc positive
+; de=result
+	pop	hl
+; hl = du, de = dv
+; do stuff with du and dv
+; ITextureFracCst frac(du)*65536+frac(dv)
+; ITextureIntCst0 int(dv)*t_size+int(du)
+; ITextureIntCst1 = t_size
+	ld	a, l
+	ld	(ITextureXFracCst+2), a
+	ld	a, e
+	ld	(ITextureXFracCst), a
+ITextureSize2=$+2
+	ld	bc, $000000
+; do c*signed(de/256)+signed(hl/256)
+	push	hl
+	ex	de, hl
+	ld	d, b
+	ld	e, h
+	add	hl, hl
+	ex	de, hl
+	mlt	hl
+	jr	nc, $+5
+	or	a, a
+	sbc	hl, bc
+	ex	de, hl
+	pop	hl
+	ld	a, h
+	add	hl, hl
+	sbc	hl, hl
+	ld	l, a
+	add	hl, de
+; hl is result
+	ld	(ITextureXIntCst), hl
+; ASSERT NC
+	or	a, a
+	sbc	hl, hl
+	ld	(ITextureFrac), hl
+	ex	de, hl
+; calculate the initial texture adress
+	ld	hl, (ix+9)
+	ld	hl, (hl)
+	ld	e, l
+ITextureSize0=$+1
+	ld	l, $00
+	mlt	hl
+	add	hl, de
+	ex	de, hl
+	ld	hl, (ITexturePage)
+	add	hl, de
+	ld	(ITextureAdress), hl
+
+	ld	hl, (ix+0)
+	ld	de, (ix+3)
+	ld	bc, (ix+6)
+	ret
+ITextureFDiv:
+; EXPECT : a=0
+	jp	p, ITextureDivide
+; abs(de)
+	or	a, $FF
+	sbc	hl, hl
+	sbc	hl, de
+	ex	de, hl
+ITextureDivide:
+; check if DE<BC
+	or	a, a
+	sbc	hl, hl
+	ex	de, hl
+	sbc	hl, bc
+	add	hl, bc
+	jr	c, ITextureFastSkip
+	ld	d, l
+	ld	l, h
+	ld	h, a		;push sign, after ld a,hlu, c is set if a=$FF, reset otherwise
+	ld	a, hlu
+	ld	h, a
+	ld	a, d
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ adc hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc
+	rla \ cpl \ ld d,a \ rla
+ITextureFastSkip:
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	add	hl,hl \ sbc hl,bc \ jr nc,$+3 \ add hl,bc \ rla
+	cpl
+	ld	e, a
+	ret	nc
+; neg de
+	sbc	hl, hl
+	sbc	hl, de
+	ex	de, hl
+	ret
+ILoadTexture:
+	inc	hl
+	ld	a, (hl)	; u_size, this is the per v increment
+	inc	hl	; v_size
+	inc	hl	; actual data
+	ld	(ITexturePage), hl
+; smc stuff
+	ld	(ITextureSize0), a
+	ld	(ITextureSize1), a
+	ld	(ITextureSize2), a
+	ld	(ITextureSize3), a
+	ld	(ITextureSize4), a
+	ret
+
+
+ITexturePage:	; actual adress of texture source
+	.dl	0
+ITextureAdress:
+	.dl	0
+ITextureFrac:
+	.dl	0
+ITextureTmpSave:
+	.dl	0,0,0,0,0,0
+
+#define v IVRAM-ITextureR0
+
+	.align	256	; this will be moved when the data structure will be completed
+ITextureUnit0:
+	.dl	ITextureW8+v \ .db 0
+	.dl	ITextureW7+v \ .db 0
+	.dl	ITextureW6+v \ .db 0
+	.dl	ITextureW5+v \ .db 0
+	.dl	ITextureW4+v \ .db 0
+	.dl	ITextureW3+v \ .db 0
+	.dl	ITextureW2+v \ .db 0
+	.dl	ITextureW1+v \ .db 0
+ITextureUnit1:
+	.dl	ITextureRW8+v \ .db 0
+	.dl	ITextureRW7+v \ .db 0
+	.dl	ITextureRW6+v \ .db 0
+	.dl	ITextureRW5+v \ .db 0
+	.dl	ITextureRW4+v \ .db 0
+	.dl	ITextureRW3+v \ .db 0
+	.dl	ITextureRW2+v \ .db 0
+	.dl	ITextureRW1+v \ .db 0
+
+ITextureR0:
+	ex	af, af'
+ITextureW0:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW1:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW2:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW3:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW4:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW5:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW6:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW7:
+	ld	a, (hl)
+	exx
+	ld	(de), a
+	inc	de
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureW8:
+	ex	af, af'
+	dec	a
+	jr	nz, ITextureR0
+	jp	ITextureNext
+
+ITextureR1:
+	ex	af, af'
+ITextureRW0:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW1:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW2:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW3:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW4:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW5:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW6:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW7:
+	ld	a, (hl)
+	exx
+	dec	de
+	ld	(de), a
+	ld	h, b
+	add	hl, bc
+	ld	a, h
+	exx
+	adc	hl, bc
+	rra
+	jr	nc, $+3
+	add	hl, de
+ITextureRW8:
+	ex	af, af'
+	dec	a
+	jr	nz, ITextureR1
+	jp	ITextureNext
+
+#comment
+ITexturedFdxU:
+	.dl	0
+ITexturedFdyU:
+	.dl	0
+ITexturedFdxV:
+	.dl	0
+ITexturedFdyV:
+	.dl	0
+ITextureMipmap:
+; get mipmap level from delta's
+	ret
+ITextureBC1Unpack:
+; unpack a 4x4 block
+; ix = block
+	lea	hl, ix-1
+	ld	de, ITEXTURE_CACHE
+	ld	bc, 0
+	ld	a, (ix+4)
+	ld	c, b
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rlca
+	and	%00000011
+	ld	c, a \ inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	ld	a, (ix+5)
+	ld	c, b
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rlca
+	and	%00000011
+	ld	c, a \ inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	ld	a, (ix+6)
+	ld	c, b
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rlca
+	and	%00000011
+	ld	c, a \ inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	ld	a, (ix+7)
+	ld	c, b
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rl c
+	rlca \ rl c
+	inc	c
+	add hl,bc \ ldi \ sbc hl,bc
+	rlca \ rlca
+	and	%00000011
+	ld	c, a
+	add hl,bc \ ldi
+	ret
+ITEXTURE_CACHE:
+	.db	0,0,0,0
+	.db	0,0,0,0
+	.db	0,0,0,0
+	.db	0,0,0,0
+#endcomment
