@@ -1,7 +1,7 @@
  ; ;
  ; Iris-3D library, version 1.0
  ;
- ; Copyright (c) 2016, ''
+ ; Copyright (c) 2016-2017, 'TheMachine02'
  ; All rights reserved.
  ; 
  ; Redistribution and use in source and binary forms, with or without
